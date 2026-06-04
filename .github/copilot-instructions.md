@@ -4,7 +4,7 @@ These instructions apply to every Copilot interaction in this repository.
 
 ## Repository context
 
-This repository is a conference demo showing **GitHub Copilot + Simulink Agentic Toolkit (MCP)**
+This repository is a demo showing **GitHub Copilot + Simulink Agentic Toolkit (MCP)**
 orchestrating a Simulink cardiac digital twin. The primary scenario is simulating the effect of a
 beta-blocker (metoprolol) dosage increase of 20% (50 mg → 60 mg) on key haemodynamic outputs.
 
