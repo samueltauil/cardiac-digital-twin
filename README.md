@@ -1,6 +1,6 @@
 # Cardiac Digital Twin — GitHub Copilot + Simulink Agentic Toolkit Demo
 
-A conference-ready demo showing **GitHub Copilot** orchestrating the **Simulink Agentic Toolkit** via MCP to simulate a beta-blocker dosage change on a cardiac digital twin.
+A demo showing **GitHub Copilot** orchestrating the **Simulink Agentic Toolkit** via MCP to simulate a beta-blocker dosage change on a cardiac digital twin.
 
 ---
 
@@ -168,4 +168,3 @@ Before every session, complete all checks in `setup/preflight_checklist.md`.
 - [Simulink Agentic Toolkit — Getting Started](https://github.com/matlab/simulink-agentic-toolkit/blob/main/GETTING_STARTED.md)
 - [MATLAB MCP Core Server](https://github.com/matlab/matlab-mcp-core-server)
 - [MCP servers in VS Code](https://code.visualstudio.com/docs/copilot/customization/mcp-servers)
-- Demo use-case analysis: [`context.md`](context.md)
