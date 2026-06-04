@@ -1,0 +1,29 @@
+# Git ignore for cardiac-digital-twin
+
+# MATLAB generated files
+*.asv
+*.mex*
+slprj/
+*.slxc
+*.slxp
+
+# Simulink model file — excluded; generated programmatically by create_cardiac_model.m
+CardiacDigitalTwin.slx
+CardiacDigitalTwin.slxc
+
+# MATLAB workspace data
+*.mat
+
+# Figure exports
+*.fig
+*.png
+*.jpg
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# VS Code local settings (mcp.json is intentionally tracked)
+.vscode/settings.json
+.vscode/launch.json
