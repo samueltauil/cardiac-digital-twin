@@ -1,6 +1,22 @@
 # Cardiac Digital Twin — GitHub Copilot + Simulink Agentic Toolkit Demo
 
-A demo showing **GitHub Copilot** orchestrating the **Simulink Agentic Toolkit** via MCP to simulate a beta-blocker dosage change on a cardiac digital twin.
+## Why This Matters
+
+A pharmaceutical company developing a cardiovascular drug today asks:
+> *"How will the average patient respond?"*
+
+But patients aren't average. They differ in age, weight, kidney function, genetics, existing conditions, and current medications. Running a single clinical trial against an "average" captures none of that variability — and failed trials can cost **billions of dollars and years of time**.
+
+A **cardiac digital twin** changes the question to:
+> *"How will **this type** of patient respond?"*
+
+By simulating the cardiovascular system computationally, researchers can explore dosage effects across patient profiles **before enrolling a single person** — reducing failed trials, compressing trial timelines, and cutting costs at the frontier of personalized medicine.
+
+---
+
+## What This Demo Shows
+
+This demo makes that vision tangible. It uses **GitHub Copilot** orchestrating the **Simulink Agentic Toolkit** via MCP to simulate a beta-blocker dosage change on a cardiac digital twin — entirely through natural-language prompts, with no manual code editing.
 
 ---
 
@@ -8,13 +24,14 @@ A demo showing **GitHub Copilot** orchestrating the **Simulink Agentic Toolkit**
 
 > *"Simulate the effect of increasing a patient's beta-blocker (metoprolol) dosage by 20%."*
 
-In six Copilot prompts, the AI assistant will:
+In seven Copilot prompts, the AI assistant will:
 1. Describe the cardiac Simulink model architecture
 2. Locate and resolve the `beta_blocker_dose_mg` parameter
 3. Apply the +20% change (50 mg to 60 mg)
 4. Re-run the simulation and compare key metrics
 5. Interpret the physiological impact in clinical context
 6. Generate a Gherkin verification test
+7. Draft formal engineering requirements from the simulation results
 
 ---
 
@@ -141,7 +158,7 @@ Follow the files in `demo/` in order:
 
 | File | Purpose |
 |------|---------|
-| `demo/live_prompts.md` | 6-prompt live Copilot walkthrough with expected outputs and timing |
+| `demo/live_prompts.md` | 7-prompt live Copilot walkthrough with expected outputs and timing |
 | `demo/scripted_runbook.md` | Pre-verified fallback outputs if live execution fails |
 | `demo/narrative_script.md` | Executive narration to speak between technical steps |
 
@@ -156,8 +173,9 @@ Before every session, complete all checks in `setup/preflight_checklist.md`.
 [Prompt 2] Find dosage parameter         -- model_query_params, model_resolve_params
 [Prompt 3] Apply +20% dose change        -- model_edit
 [Prompt 4] Run simulation and compare    -- model_test or simulation run
-[Prompt 5] Explain physiological impact  -- Copilot reasoning
+[Prompt 5] Explain physiological impact  -- Copilot reasoning + specifying-plant-models skill
 [Prompt 6] Generate verification test    -- model_test (Gherkin)
+[Prompt 7] Draft engineering requirements -- generate-requirement-drafts skill
 ```
 
 ---
