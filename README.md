@@ -106,7 +106,7 @@ with the platform-specific variants documented in [`setup/mcp-configuration.md`]
 > [`setup/mcp-configuration.md`](setup/mcp-configuration.md#copilot-cli).
 
 Reload VS Code after any MCP configuration change:
-`Ctrl+Shift+P` > `Developer: Reload Window`
+`Cmd/Ctrl+Shift+P` → `Developer: Reload Window`
 
 ### Step 3 — Initialize MATLAB and build the model
 

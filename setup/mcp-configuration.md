@@ -64,11 +64,19 @@ The wizard will:
 1. Download the MCP server binary to `~/.matlab/agentic-toolkits/bin/`
 2. Install MATLAB-side MCP components (`--setup-matlab`)
 3. Ask which agent to configure — **select "GitHub Copilot"**
-4. Write MCP configuration to the VS Code user profile `mcp.json`
+4. Write MCP configuration to the VS Code **user-profile** `mcp.json` (global, see paths below)
 5. Create skill symlinks in `~/.agents/skills/`
 
+**VS Code user-profile `mcp.json` location (written automatically by setup):**
+
+| Platform | Path |
+|----------|------|
+| Windows  | `%APPDATA%\Code\User\mcp.json` |
+| macOS    | `~/Library/Application Support/Code/User/mcp.json` |
+| Linux    | `~/.config/Code/User/mcp.json` |
+
 > **After setup completes:** restart MATLAB, then reload VS Code  
-> (`Ctrl+Shift+P` → `Developer: Reload Window`).
+> (`Cmd/Ctrl+Shift+P` → `Developer: Reload Window`).
 
 ---
 
