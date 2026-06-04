@@ -60,12 +60,16 @@ matlab.addons.toolbox.installToolbox("agenticToolkitInstaller.mltbx")
 setupAgenticToolkit("install")
 ```
 
-The wizard will:
-1. Download the MCP server binary to `~/.matlab/agentic-toolkits/bin/`
-2. Install MATLAB-side MCP components (`--setup-matlab`)
-3. Ask which agent to configure — **select "GitHub Copilot"**
-4. Write MCP configuration to the VS Code **user-profile** `mcp.json` (global, see paths below)
-5. Create skill symlinks in `~/.agents/skills/`
+The interactive wizard walks you through:
+1. **Select toolkits** — choose MATLAB Agentic Toolkit, Simulink Agentic Toolkit, or both
+2. **Download** — MCP server binary and toolkit files from GitHub releases go to `~/.matlab/agentic-toolkits/` (`%USERPROFILE%\.matlab\agentic-toolkits\` on Windows)
+3. **Select agent** — choose from Claude Code, **GitHub Copilot**, Codex, Gemini CLI, or Amp
+4. **Choose scope** — global (all projects) or project-level
+5. **Enable toolkits** — select which installed toolkits to activate for this configuration
+
+After the wizard, setup writes the MCP config to your agent's config file and creates skill symlinks in `~/.agents/skills/`.
+
+> **After first install:** **restart MATLAB** so the newly installed MCP components are on the path. Then reload VS Code (`Cmd/Ctrl+Shift+P` → `Developer: Reload Window`).
 
 **VS Code user-profile `mcp.json` location (written automatically by setup):**
 
@@ -74,9 +78,6 @@ The wizard will:
 | Windows  | `%APPDATA%\Code\User\mcp.json` |
 | macOS    | `~/Library/Application Support/Code/User/mcp.json` |
 | Linux    | `~/.config/Code/User/mcp.json` |
-
-> **After setup completes:** restart MATLAB, then reload VS Code  
-> (`Cmd/Ctrl+Shift+P` → `Developer: Reload Window`).
 
 ---
 
@@ -169,12 +170,20 @@ run('setup/startup.m')
 ```
 
 This calls `satk_initialize`, which:
-1. Calls `shareMATLABSession` so the MCP server can attach
-2. Adds the Simulink Agentic Toolkit to the MATLAB path
+1. Adds the toolkit's tool directories to the MATLAB path
+2. Calls `shareMATLABSession` so the MCP server can attach to this session
 3. Runs `validate_installation` to confirm everything is connected
 
-After running `startup.m`, **reload your VS Code window** so Copilot's  
-MCP client reconnects to the newly shared MATLAB session.
+After running `startup.m`, **reload your VS Code window** (`Cmd/Ctrl+Shift+P` → `Developer: Reload Window`) so Copilot's MCP client reconnects to the newly shared MATLAB session.
+
+> **Tip — automate per-session init:** Add the following to your MATLAB [`startup.m`](https://www.mathworks.com/help/matlab/ref/startup.html) to avoid running this manually each time:
+> ```matlab
+> % Initialize Simulink Agentic Toolkit (adjust version check as needed)
+> if contains(version, 'R2026a') || contains(version, 'R2025a')
+>     addpath("~/.matlab/agentic-toolkits/simulink")
+>     satk_initialize
+> end
+> ```
 
 ---
 
@@ -229,7 +238,7 @@ setupAgenticToolkit("configure")
 
 ### Check server is reachable (VS Code)
 
-`Ctrl+Shift+P` → `MCP: List Servers` — confirm `matlab-simulink` shows as running.
+`Cmd/Ctrl+Shift+P` → `MCP: List Servers` — confirm `matlab-simulink` shows as running.
 
 ---
 
