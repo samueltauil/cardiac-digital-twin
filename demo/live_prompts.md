@@ -148,6 +148,43 @@ This is the future of regulated engineering workflows."*
 
 ---
 
+## Prompt 7 — Generate Formal Engineering Requirements
+
+```
+Based on the simulation results and the validated dose-response behaviour,
+generate formal engineering requirements for this cardiac digital twin model.
+Include a system-level requirement for the beta-blocker dose-response,
+a performance requirement for steady-state heart rate, and a safety requirement
+for the minimum acceptable cardiac output.
+```
+
+**Expected skill:** `generate-requirement-drafts`  
+**Expected MCP tools:** None (reasoning from prior simulation context)  
+**Expected response:** Structured requirements in a standard format, for example:
+
+```
+REQ-001 [System]: The cardiac digital twin shall simulate the steady-state
+haemodynamic response to a change in beta_blocker_dose_mg within ±5% of
+the analytically predicted values.
+
+REQ-002 [Performance]: For beta_blocker_dose_mg in the range [40, 80] mg,
+the model shall produce a steady-state heart rate between 40 bpm and 100 bpm.
+
+REQ-003 [Safety]: The model shall flag a warning when simulated cardiac output
+falls below 3.0 L/min, indicating a clinically significant risk of inadequate
+perfusion.
+```
+
+**Closing narrative:**  
+*"In seven prompts, we went from an unexplored model to a fully traced engineering  
+artefact. Copilot explored the architecture, found the parameter, applied the  
+change, ran and compared simulations, interpreted the physiology, wrote the  
+verification test, and now generated formal requirements — all from natural  
+language, all driven by the live model. This is what AI-assisted model-based  
+development looks like."*
+
+---
+
 ## Timing Guide
 
 | Prompt | Expected Duration | Cumulative |
@@ -158,5 +195,6 @@ This is the future of regulated engineering workflows."*
 | 4 | 60–90 s | ~4 min |
 | 5 | 30–45 s | ~5 min |
 | 6 | 45–60 s | ~6 min |
+| 7 | 45–60 s | ~7 min |
 
-**Total live demo: ~6 minutes** (target: under 8 minutes with narration)
+**Total live demo: ~7 minutes** (target: under 9 minutes with narration)

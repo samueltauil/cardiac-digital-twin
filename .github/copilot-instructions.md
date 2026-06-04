@@ -50,6 +50,23 @@ When a prompt relates to the Simulink model, prefer these tools over general cod
 - Steady state is defined as the final 10% of the simulation window (`StopTime = 3600` s)
 - Validation pass/fail criteria are in `validation/validation_criteria.md`; automation is in `validation/validate_beta_blocker.m`
 
+## Simulink Agentic Toolkit skills
+
+The following skills are installed by the toolkit setup and declared in the demo agent.
+They provide domain-specific guidance that augments the MCP tools:
+
+| Skill | Demo usage |
+|-------|-----------|
+| `simulating-simulink-models` | Prompt 4 — run and compare simulations |
+| `testing-simulink-models` | Prompt 6 — generate Gherkin validation test |
+| `specifying-plant-models` | Prompt 1 — explore cardiac plant model architecture |
+| `specifying-mbd-algorithms` | Prompt 2 — trace PK/PD algorithm through model |
+| `building-simulink-models` | Prompt 1 — describe model structure |
+| `generate-requirement-drafts` | Prompt 7 — generate formal engineering requirements |
+
+Skills are automatically available after toolkit setup (symlinked to `~/.agents/skills/`).
+See `setup/mcp-configuration.md` for setup details.
+
 ## Demo delivery
 
 - Live prompt sequence: `demo/live_prompts.md`

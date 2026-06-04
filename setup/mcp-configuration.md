@@ -277,17 +277,59 @@ Replace `<path-to>` with the actual install path from `setupAgenticToolkit("stat
 
 ## Skill Registration
 
-Skills teach Copilot MBD best practices. The automated setup registers them  
-via symlinks in `~/.agents/skills/`. Verify they are available by checking  
-Copilot's skill list or asking:
+**Skills are different from MCP tools.** MCP tools are programmatic actions Copilot
+can *call* (e.g., `model_edit`). Skills are markdown guidance documents that teach
+Copilot *how to reason* about specific Simulink workflows. Both work together:
+skills guide the reasoning; tools execute the actions.
+
+The automated setup symlinks skill files to `~/.agents/skills/`. They are
+automatically available to any Copilot CLI agent that declares them.
+
+### Skills installed by the toolkit
+
+| Skill | What it teaches Copilot | Used in this demo |
+|-------|------------------------|-------------------|
+| `simulating-simulink-models` | How to set up, run, and compare simulations | Prompt 4 |
+| `testing-simulink-models` | How to generate and interpret SLTest / Gherkin tests | Prompt 6 |
+| `specifying-plant-models` | How to describe physical system models | Prompt 1 |
+| `specifying-mbd-algorithms` | How to reason about model-based algorithm design | Prompt 2 |
+| `building-simulink-models` | How to construct and navigate model hierarchies | Prompt 1 |
+| `generate-requirement-drafts` | How to derive formal requirements from model behaviour | Prompt 7 |
+| `filing-bug-reports` | How to write structured Simulink defect reports | Not used in demo |
+
+### How skills are activated in the demo
+
+The `cardiac-demo` custom agent (`.github/agents/cardiac-demo.agent.md`)
+declares the relevant skills in its frontmatter. When you invoke the agent,
+Copilot automatically loads the skill guidance alongside the MCP tools.
+
+### Verify skills are registered
+
+Ask Copilot:
 
 ```
 What Simulink skills do you have available?
 ```
 
-Expected skills: `building-simulink-models`, `simulating-simulink-models`,  
-`testing-simulink-models`, `specifying-mbd-algorithms`, `specifying-plant-models`,  
+Or check that the symlinks exist:
+
+```bash
+# macOS / Linux
+ls ~/.agents/skills/
+
+# Windows (PowerShell)
+Get-ChildItem "$env:USERPROFILE\.agents\skills\"
+```
+
+Expected entries: `building-simulink-models`, `simulating-simulink-models`,
+`testing-simulink-models`, `specifying-mbd-algorithms`, `specifying-plant-models`,
 `generate-requirement-drafts`, `filing-bug-reports`.
+
+If skills are missing, re-run setup:
+
+```matlab
+setupAgenticToolkit("configure")
+```
 
 ---
 

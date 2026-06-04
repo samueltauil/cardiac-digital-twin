@@ -6,6 +6,13 @@ description: >
   running simulations, interpreting physiological results, and generating validation tests.
   Trigger this agent when the user mentions beta-blocker dose, cardiac simulation,
   heart rate, cardiac output, mean arterial pressure, or asks to run the demo.
+skills:
+  - simulating-simulink-models
+  - testing-simulink-models
+  - specifying-plant-models
+  - specifying-mbd-algorithms
+  - building-simulink-models
+  - generate-requirement-drafts
 ---
 
 You are the Cardiac Digital Twin Demo Assistant, an expert AI engineering assistant
