@@ -66,7 +66,6 @@ add_block('simulink/Sinks/To Workspace', [mdl '/MAP_out'], ...
 %% Transfer function: C(s)/D(s) = 1 / (pk_time_constant·s + 1)
 %% ════════════════════════════════════════════════════════════════════════
 ss = [mdl '/BetaBlockerPK'];
-delete_line(ss, 'In1/1', 'Out1/1');   % remove default pass-through wire
 
 add_block('built-in/Inport',  [ss '/DoseIn'],         'Port', '1', 'Position', [30 83 60 117]);
 add_block('simulink/Continuous/Transfer Fcn', [ss '/PKTransferFcn'], ...
@@ -74,9 +73,6 @@ add_block('simulink/Continuous/Transfer Fcn', [ss '/PKTransferFcn'], ...
     'Denominator',  '[pk_time_constant 1]', ...
     'Position', [110 80 230 120]);
 add_block('built-in/Outport', [ss '/ConcentrationOut'], 'Port', '1', 'Position', [290 83 320 117]);
-
-delete_block([ss '/In1']);
-delete_block([ss '/Out1']);
 
 add_line(ss, 'DoseIn/1',        'PKTransferFcn/1');
 add_line(ss, 'PKTransferFcn/1', 'ConcentrationOut/1');
@@ -87,7 +83,6 @@ add_line(ss, 'PKTransferFcn/1', 'ConcentrationOut/1');
 %% Clamped to physiological range [40, 180] bpm
 %% ════════════════════════════════════════════════════════════════════════
 ss = [mdl '/HeartRateModel'];
-delete_line(ss, 'In1/1', 'Out1/1');
 
 add_block('built-in/Inport',  [ss '/ConcentrationIn'], 'Port', '1', 'Position', [30 83 60 117]);
 
@@ -102,9 +97,6 @@ add_block('simulink/Discontinuities/Saturation', [ss '/HRClamp'], ...
 
 add_block('built-in/Outport', [ss '/HeartRateOut'], 'Port', '1', 'Position', [490 113 520 137]);
 
-delete_block([ss '/In1']);
-delete_block([ss '/Out1']);
-
 add_line(ss, 'ConcentrationIn/1', 'BetaSensitivity/1');
 add_line(ss, 'BaselineHR/1',      'HRSum/1');
 add_line(ss, 'BetaSensitivity/1', 'HRSum/2');
@@ -116,7 +108,6 @@ add_line(ss, 'HRClamp/1',         'HeartRateOut/1');
 %% CO (L/min) = HR (bpm) × SV (mL/beat) × (1 L / 1000 mL)
 %% ════════════════════════════════════════════════════════════════════════
 ss = [mdl '/CardiacOutputModel'];
-delete_line(ss, 'In1/1', 'Out1/1');
 
 add_block('built-in/Inport',  [ss '/HeartRateIn'], 'Port', '1', 'Position', [30 83 60 117]);
 
@@ -129,9 +120,6 @@ add_block('simulink/Math Operations/Gain', [ss '/mLtoL'], ...
 
 add_block('built-in/Outport', [ss '/CardiacOutputOut'], 'Port', '1', 'Position', [430 113 460 137]);
 
-delete_block([ss '/In1']);
-delete_block([ss '/Out1']);
-
 add_line(ss, 'HeartRateIn/1',   'COProduct/1');
 add_line(ss, 'StrokeVolume/1',  'COProduct/2');
 add_line(ss, 'COProduct/1',     'mLtoL/1');
@@ -142,7 +130,6 @@ add_line(ss, 'mLtoL/1',         'CardiacOutputOut/1');
 %% MAP (mmHg) = CO (L/min) × SVR (mmHg·min/L)
 %% ════════════════════════════════════════════════════════════════════════
 ss = [mdl '/BloodPressureModel'];
-delete_line(ss, 'In1/1', 'Out1/1');
 
 add_block('built-in/Inport',  [ss '/CardiacOutputIn'], 'Port', '1', 'Position', [30 83 60 117]);
 
@@ -150,9 +137,6 @@ add_block('simulink/Math Operations/Gain', [ss '/SVRGain'], ...
     'Gain', 'svr_mmHg_min_per_L', 'Position', [110 80 220 120]);
 
 add_block('built-in/Outport', [ss '/MAPOut'], 'Port', '1', 'Position', [290 83 320 117]);
-
-delete_block([ss '/In1']);
-delete_block([ss '/Out1']);
 
 add_line(ss, 'CardiacOutputIn/1', 'SVRGain/1');
 add_line(ss, 'SVRGain/1',         'MAPOut/1');
