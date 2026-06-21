@@ -6,6 +6,10 @@ repo_url: https://github.com/samueltauil/cardiac-digital-twin
 repo_name: samueltauil/cardiac-digital-twin
 edit_uri: edit/main/docs/
 
+# Emit page.html instead of page/index.html so links work whether the site is
+# served over HTTP (mkdocs serve, GitHub Pages) or browsed via file:// directly.
+use_directory_urls: false
+
 theme:
   name: material
   language: en
@@ -88,7 +92,6 @@ markdown_extensions:
 
 extra_javascript:
   - javascripts/mathjax.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 extra:
