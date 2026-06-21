@@ -6,6 +6,10 @@ A `uifigure`-based dashboard that runs the 50 mg baseline and 60 mg modified dos
 
 This is Prompt 8 in the demo sequence: the visualisation closer that turns the numerical comparison from Prompt 4 into something a non-engineer can absorb at a glance.
 
+![Real-time dashboard showing both 50 mg and 60 mg runs overlaid](images/dashboard.png)
+
+*Final dashboard state after both runs complete. Gauges show the live 60 mg values (HR 60.7, CO 4.24, MAP 76.5). The time-history axes overlay the two runs: red is 50 mg baseline, blue is 60 mg modified. The delta strip at the bottom shows the steady-state difference.*
+
 ---
 
 ## Layout
@@ -36,13 +40,19 @@ This is Prompt 8 in the demo sequence: the visualisation closer that turns the n
 The dashboard does **not** simulate in batch and replay. It uses the live simulation engine and polls the running model:
 
 ```matlab
-set_param(mdl, 'EnablePacing', 'on', 'PaceRate', '0.005', 'StopTime', '3600');
+set_param(mdl, 'EnablePacing', 'on', 'PacingRate', '200', 'StopTime', '3600');
+set_param(mdl, 'ReturnWorkspaceOutputs', 'off');
+
+HR_block  = [mdl '/HeartRateModel/HRClamp'];      % leaf Saturation block
+CO_block  = [mdl '/CardiacOutputModel/mLtoL'];    % leaf Gain block
+MAP_block = [mdl '/BloodPressureModel/SVRGain'];  % leaf Gain block
+
 set_param(mdl, 'SimulationCommand', 'start');
 
 while ~strcmp(get_param(mdl, 'SimulationStatus'), 'stopped')
-    rto_hr  = get_param([mdl '/HeartRateModel'],     'RuntimeObject');
-    rto_co  = get_param([mdl '/CardiacOutputModel'], 'RuntimeObject');
-    rto_map = get_param([mdl '/BloodPressureModel'], 'RuntimeObject');
+    rto_hr  = get_param(HR_block,  'RuntimeObject');
+    rto_co  = get_param(CO_block,  'RuntimeObject');
+    rto_map = get_param(MAP_block, 'RuntimeObject');
     tNow    = get_param(mdl, 'SimulationTime');
 
     if ~isempty(rto_hr) && tNow > lastT
@@ -58,15 +68,15 @@ while ~strcmp(get_param(mdl, 'SimulationStatus'), 'stopped')
         drawnow limitrate;
         lastT = tNow;
     end
-    pause(0.05);
+    pause(0.02);
 end
 ```
 
-Two pieces of Simulink machinery do the heavy lifting.
+Three pieces of Simulink machinery do the heavy lifting.
 
-### Simulink Pacing: `EnablePacing` plus `PaceRate`
+### Simulink Pacing: `EnablePacing` plus `PacingRate`
 
-`PaceRate = 0.005` means *5 ms of wall-clock per 1 s of simulation time*. With `StopTime = 3600`, that gives about 18 s wall-clock per run, about 36 s total. Fast enough to keep the demo moving, slow enough to *see* the exponential approach to steady state.
+The user-facing `paceRate` argument is *wall-clock seconds per simulation second* (lower means faster). The dashboard converts it to Simulink's native `PacingRate` parameter (*simulation seconds per wall-clock second*) by taking the reciprocal. So `paceRate = 0.005` sets `PacingRate = 200`. With `StopTime = 3600`, that gives about 18 s wall-clock per run, about 36 s total. Fast enough to keep the demo moving, slow enough to *see* the exponential approach to steady state.
 
 You can pass a different rate when calling the function:
 
@@ -82,6 +92,20 @@ realtime_dashboard(0.01)     % slower (~36 s/run)
 
 Reading these in a polling loop, gated on `tNow > lastT` so we only update on new time steps, gives smooth live values without contention.
 
+### Polling leaf blocks, not virtual subsystems
+
+The four top-level subsystems (`BetaBlockerPK`, `HeartRateModel`, `CardiacOutputModel`, `BloodPressureModel`) are **virtual subsystems**. Virtual subsystems are graphical groupings only: at compile time, Simulink inlines their contents into the parent's execution context. They have no runtime of their own and `get_param(virtualSubsystem, 'RuntimeObject')` returns empty during a run.
+
+The fix is to poll the **leaf blocks inside** each subsystem instead:
+
+| Signal | Subsystem | Leaf block polled | Block type |
+|---|---|---|---|
+| HR  | `HeartRateModel`       | `HRClamp`  | Saturation |
+| CO  | `CardiacOutputModel`   | `mLtoL`    | Gain |
+| MAP | `BloodPressureModel`   | `SVRGain`  | Gain |
+
+Each is the last block in its subsystem, so its `OutputPort(1).Data` is the subsystem's output signal. The dashboard typically captures 120 to 150 live frames per 18 s run.
+
 ---
 
 ## Why this design
@@ -90,6 +114,8 @@ Reading these in a polling loop, gated on `tNow > lastT` so we only update on ne
 |---|---|
 | Use Simulink Pacing rather than `pause()` in a script loop | Pacing is solver-aware. The model itself slows down so the *physics* plays out at the chosen rate, not just the visualisation. |
 | Use `RuntimeObject` rather than `To Workspace` logging | `To Workspace` data is only available *after* `sim()` returns. `RuntimeObject` is live. |
+| Poll leaf blocks rather than the four top-level subsystems | Virtual subsystems get inlined at compile time and have no live runtime. The leaf Saturation/Gain blocks at the bottom of each subsystem do. |
+| Flip `ReturnWorkspaceOutputs` to `off` during the run | With the default `on`, asynchronous `SimulationCommand='start'` writes results into a `SimulationOutput` object rather than directly to `tout`/`HR_out`/etc., breaking the post-run steady-state read. |
 | Use `animatedline` rather than `plot` plus `XData` updates | `animatedline` was built for this. It is GPU-friendly, append-only, and `addpoints` is amortised. |
 | Run both doses in the **same axes** | Overlay is the comparison. Two side-by-side panels would force the viewer to mentally subtract two curves. |
 | Read the final values from base workspace after each run | After pacing finishes, the `To Workspace` blocks (`HR_out`, `CO_out`, `MAP_out`) have the full time series. That is where the steady-state Δ comes from. |
@@ -144,7 +170,9 @@ All of these are local edits to `realtime_dashboard.m`. None require touching th
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| Gauges never move | `RuntimeObject` returned empty because the subsystem had not initialised. | The script's `if ~isempty(rto_hr)` guard handles this; wait for the first time step. |
-| Window closes before run 2 finishes | User clicked `Close`. | The dashboard checks the figure handle before drawing; closing aborts cleanly. |
-| Pacing too slow or too fast | `PaceRate` mismatch with audience speed. | Call `realtime_dashboard(0.002)` for faster, `realtime_dashboard(0.01)` for slower. |
+| Gauges never move, console reports `0 live frames` | Polling a virtual subsystem instead of a leaf block. | Use the leaf block paths (`HRClamp`, `mLtoL`, `SVRGain`), not the parent subsystem names. |
+| `tout`/`HR_out`/etc. missing after the run | `ReturnWorkspaceOutputs` is `on`, so results landed in a `SimulationOutput` object. | The dashboard already flips this to `off` and restores it via `onCleanup`. If you start the model manually, set it yourself. |
+| Loop exits immediately after `SimulationCommand='start'` | `start` is asynchronous; the status was still `'stopped'` when the loop checked. | The dashboard spins on `SimulationStatus == 'stopped'` for up to 5 s before entering the polling loop. |
+| Window closes before run 2 finishes | User clicked `Close`. | The dashboard checks the figure handle before drawing; closing aborts cleanly and stops the simulation. |
+| Pacing too slow or too fast | `paceRate` mismatch with audience speed. | Call `realtime_dashboard(0.002)` for faster, `realtime_dashboard(0.01)` for slower. |
 | Final Δ readout shows zeros | Sim was stopped before completion. | `To Workspace` blocks only populate after the run ends. Re-run without interrupting. |

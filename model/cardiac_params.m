@@ -17,7 +17,7 @@ svr_mmHg_min_per_L   = 18;   % mmHg·min/L (systemic vascular resistance)
                               %  At CO = 5.25 L/min → MAP ≈ 94.5 mmHg ✓
 
 %% ── Beta-blocker (metoprolol) dosing ─────────────────────────────────────
-beta_blocker_dose_mg = 50;   % mg  — CURRENT DOSE (demo: change to 60 mg)
+beta_blocker_dose_mg = 60;   % mg  — increased from 50 mg (+20%)
 
 % Sensitivity: HR reduction per mg of metoprolol at steady state.
 % Calibrated so 50 mg → ≈ 12 bpm reduction (HR 75 → 63 bpm),
