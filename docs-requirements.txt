@@ -1,0 +1,7 @@
+# MkDocs build dependencies for the Cardiac Digital Twin documentation site.
+# Install with:   pip install -r docs-requirements.txt
+# Serve locally:  mkdocs serve
+# Build static:   mkdocs build
+mkdocs>=1.6
+mkdocs-material>=9.5
+pymdown-extensions>=10.7

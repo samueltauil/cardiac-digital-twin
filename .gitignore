@@ -32,3 +32,6 @@ desktop.ini
 # VS Code local settings (mcp.json is intentionally tracked)
 .vscode/settings.json
 .vscode/launch.json
+
+# MkDocs build output
+site/
