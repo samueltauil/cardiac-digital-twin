@@ -46,6 +46,8 @@ Third, every step produces a durable engineering deliverable. Architecture summa
 
 **Why it matters:** the cardiologist does not need to read Simulink to understand what the model does. Copilot translates block topology into physiology.
 
+![Copilot Chat answering Prompt 1: a Ran Model Overview tool call is shown, followed by a textual summary of the four-stage cascade and a subsystems table](images/demo-copilot-first-prompt.png)
+
 ---
 
 ## Prompt 2. Find the dosage parameter

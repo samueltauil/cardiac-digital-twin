@@ -118,6 +118,24 @@ setupAgenticToolkit("install")
 
 When prompted, select **GitHub Copilot** as the target agent. This installs the MCP server binary, registers Simulink skills, and writes a global VS Code MCP configuration.
 
+The install runs in four interactive stages.
+
+1. Pick the toolkits to install (option `3` installs both MATLAB and Simulink agentic toolkits) and confirm the download plan.
+
+    ![Installer prompts for toolkit selection and confirms the download plan](docs/images/setup-01-install-toolkit.png)
+
+2. Choose the agent platform to configure (`2` for GitHub Copilot).
+
+    ![Agent platform selection prompt listing Claude Code, GitHub Copilot, Codex, Amp, and Gemini CLI](docs/images/setup-02-configure-agent.png)
+
+3. Pick which MATLAB and Simulink skill groups to enable. `all` is a reasonable default for the demo.
+
+    ![Skill group selection listing aerospace, ai-and-statistics, automotive, and other groups](docs/images/setup-03-select-skill-groups.png)
+
+4. The installer writes the MCP server entry into Copilot's user-level `mcp.json` and registers the selected skills.
+
+    ![Final stage writes mcp.json for GitHub Copilot and registers skills](docs/images/setup-04-write-mcp-config.png)
+
 See [`setup/mcp-configuration.md`](setup/mcp-configuration.md) for the full setup guide including manual configuration, macOS and Linux paths, and troubleshooting.
 
 ### Step 2. Configure the workspace MCP server
@@ -150,6 +168,8 @@ Describe the structure of the currently open Simulink model.
 ```
 
 Copilot should call `model_overview` and return a description of the `CardiacDigitalTwin` subsystem hierarchy. If it responds without calling MCP tools, see the troubleshooting section in [`setup/mcp-configuration.md`](setup/mcp-configuration.md).
+
+![Copilot Chat responding to the first prompt, showing the Ran Model Overview MCP tool call and the four-subsystem cascade summary](docs/images/demo-copilot-first-prompt.png)
 
 ### Step 5. Run the demo
 
