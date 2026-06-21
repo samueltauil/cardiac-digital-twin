@@ -185,6 +185,37 @@ development looks like."*
 
 ---
 
+## Prompt 8 — Real-Time Dashboard (Optional Visual Closer)
+
+```
+Launch a real-time dashboard that runs both the 50 mg baseline and the 60 mg
+modified dose with Simulink Pacing enabled, shows live HR / CO / MAP gauges,
+and overlays the two runs in a side-by-side comparison.
+```
+
+**Expected action:** Calls `demo/realtime_dashboard.m`, which:
+- Enables Simulink Pacing (`PaceRate = 5 ms/sim-sec`) so a 3600 s sim plays in ~18 s wall-clock
+- Runs the 50 mg case, then the 60 mg case, back-to-back
+- Live-updates three `uigauge` widgets (HR, CO, MAP) from `RuntimeObject` queries
+- Accumulates both runs on overlaid time-history axes with a legend
+- Reports the Δ steady-state between the two doses on the status bar
+
+**Run manually** (works without Copilot if needed):
+
+```matlab
+cd(fullfile(repoRoot, 'demo'))
+realtime_dashboard           % default pace (≈ 18 s/run)
+realtime_dashboard(0.002)    % faster, ≈ 7 s/run
+```
+
+**Narrative bridge:**
+*"And finally — watch it run. This is the same digital twin, but now you're seeing
+the physiology evolve in real time, with both dose scenarios drawn on the same
+axes. The cardiologist gets an immediate visual answer to: how does this patient
+respond to the dose change?"*
+
+---
+
 ## Timing Guide
 
 | Prompt | Expected Duration | Cumulative |
@@ -196,5 +227,6 @@ development looks like."*
 | 5 | 30–45 s | ~5 min |
 | 6 | 45–60 s | ~6 min |
 | 7 | 45–60 s | ~7 min |
+| 8 | 40–60 s | ~8 min |
 
-**Total live demo: ~7 minutes** (target: under 9 minutes with narration)
+**Total live demo: ~8 minutes** (target: under 10 minutes with narration)

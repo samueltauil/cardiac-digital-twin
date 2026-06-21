@@ -7,6 +7,11 @@ slprj/
 *.slxc
 *.slxp
 
+# Simulink editor / autosave / temp
+*.autosave
+*~mdl.slmx
+*_harnessInfo.xml
+
 # Simulink model file — excluded; generated programmatically by create_cardiac_model.m
 CardiacDigitalTwin.slx
 CardiacDigitalTwin.slxc
