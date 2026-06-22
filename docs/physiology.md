@@ -219,15 +219,16 @@ This is the discipline that makes the model a *reference implementation* rather 
 
 ## What the demo deliberately leaves out
 
-Honest scoping matters. This model omits:
+Honest scoping matters. The v1 model omits the following, and the [Advanced physiology (Phase 2)](advanced-physiology.md) page covers the first three with concrete v2 implementations:
 
-- **Receptor-binding nonlinearity.** \(k_\beta\) is constant. A real Hill or Emax curve (the canonical dose-response shapes from pharmacology) would flatten at high dose so each extra milligram has less effect.
-- **Baroreflex feedback.** Falling MAP would normally trigger autonomic compensation that nudges HR up and SVR up. This model is open-loop, meaning no such feedback exists.
-- **Diurnal variation.** Real HR and MAP cycle with the circadian rhythm. This model is time-invariant once steady state is reached.
-- **Autonomic state.** Sympathetic ("fight or flight") versus parasympathetic ("rest and digest") balance affects every parameter here.
-- **Comorbidity.** Kidney function, heart failure, atrial fibrillation, age. All of them reshape the dose-response curve.
+- **Receptor-binding nonlinearity.** \(k_\beta\) is constant in v1. v2 replaces it with a Hill/Emax expression so each extra milligram has less effect as binding saturates.
+- **Baroreflex feedback.** Falling MAP would normally trigger autonomic compensation that nudges HR up. v1 is open-loop; v2 adds a `BaroreflexController` subsystem that closes the loop from MAP back to HR.
+- **Patient variability.** v1 is one nominal patient. v2 ships a Monte Carlo cohort of 100 virtual patients with a PRCC sensitivity tornado.
+- **Diurnal variation.** Real HR and MAP cycle with the circadian rhythm. Neither v1 nor v2 models this.
+- **Autonomic state.** Sympathetic versus parasympathetic balance affects every parameter here. v2's baroreflex captures part of this loop but not the full autonomic dynamics.
+- **Comorbidity.** Kidney function, heart failure, atrial fibrillation, age. Each reshapes the dose-response curve and is out of scope for both versions.
 
-Each of these is a known extension. The Simulink topology is set up so any one of them can be added as a subsystem replacement without disturbing the others. That is the point of using a model-based digital twin in the first place.
+The Simulink topology is set up so any of these can be added as a subsystem replacement without disturbing the others. That is the point of using a model-based digital twin in the first place, and is exactly the route Phase 2 follows.
 
 *[HR]: heart rate, measured in beats per minute (bpm)
 *[CO]: cardiac output, the volume of blood the heart pumps per minute (L/min)

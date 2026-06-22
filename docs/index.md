@@ -141,10 +141,20 @@ cardiac-digital-twin/
 
 !!! info "About the demo's scope"
 
-    This model is a teaching artifact, not a regulated medical device. It uses a
-    deliberately simple linear-PK and linear-gain structure so the relationship
-    between every parameter and every clinical outcome is immediately auditable.
-    Real digital-twin pipelines used in drug development add nonlinear
-    receptor binding, baroreflex feedback, autonomic modulation, and
-    patient-specific physiology, but the *engineering workflow* this demo
-    illustrates is the same.
+    This model is a teaching artifact, not a regulated medical device. The v1
+    model uses a deliberately simple linear-PK and linear-gain structure so
+    the relationship between every parameter and every clinical outcome is
+    immediately auditable; that is the right shape for the 7-prompt live
+    demo.
+
+    Phase 2 closes the three biggest gaps in v1, each via one additional
+    Copilot prompt and one analysis script. The advanced model lives in
+    [`CardiacDigitalTwin_v2.slx`](https://github.com/samueltauil/cardiac-digital-twin/blob/main/model/CardiacDigitalTwin_v2.slx)
+    and is documented in [Advanced physiology (Phase 2)](advanced-physiology.md):
+
+    - Nonlinear receptor binding via a Hill/Emax equation (Prompt 9).
+    - Closed-loop baroreflex feedback from MAP back to HR (Prompt 10).
+    - Monte Carlo virtual patient cohort with PRCC sensitivity tornado (Prompt 11).
+
+    The v1 model still drives the original 7-prompt demo; v2 is the
+    optional deep dive.

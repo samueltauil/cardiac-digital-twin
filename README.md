@@ -36,6 +36,17 @@ In eight Copilot prompts, the AI assistant will:
 7. Draft formal engineering requirements from the simulation results
 8. Launch a real-time `uifigure` dashboard with overlaid run comparison
 
+Three optional **Phase 2 deep-dive prompts** show Copilot doing structural
+refactors, feedback-loop wiring, and population-level statistical analysis on
+an advanced v2 model:
+
+9. Replace the linear HR gain with a Hill/Emax receptor-binding nonlinearity
+10. Close the cardiovascular loop with a baroreflex controller and linearize it
+11. Run a 100-patient Monte Carlo cohort with a PRCC sensitivity tornado
+
+See [`docs/advanced-physiology.md`](docs/advanced-physiology.md) for the
+full Phase 2 narrative, and `demo/live_prompts.md` for the prompt text.
+
 ---
 
 ## Expected simulation results
@@ -76,7 +87,14 @@ cardiac-digital-twin/
 |-- model/
 |   |-- cardiac_params.m            Workspace parameters loaded before simulation
 |   |-- create_cardiac_model.m      Builds CardiacDigitalTwin.slx programmatically
-|   `-- run_simulation.m            Runs baseline + modified scenario, plots comparison
+|   |-- run_simulation.m            Runs baseline + modified scenario, plots comparison
+|   |-- cardiac_params_v2.m         Phase 2 parameters (Hill/Emax + baroreflex)
+|   |-- create_cardiac_model_v2.m   Builds CardiacDigitalTwin_v2.slx programmatically
+|   `-- run_simulation_v2.m         Runs the advanced v2 baseline + modified comparison
+|-- analysis/                       Phase 2 analysis scripts (population, control)
+|   |-- run_patient_cohort.m        Monte Carlo cohort of 100 virtual patients (parsim)
+|   |-- sensitivity_tornado.m       PRCC tornado plot of cohort parameter sensitivity
+|   `-- linearize_baroreflex.m      Closed-loop linearization + Bode (Simulink Control Design)
 |-- setup/
 |   |-- startup.m                   MATLAB session initializer (run once per session)
 |   |-- mcp-configuration.md        Full MCP setup guide (all platforms)
@@ -214,6 +232,7 @@ mkdocs build
 | [Validation](docs/validation.md) | The Gherkin test, the MATLAB suite, and when to use each. |
 | [Requirements](docs/requirements.md) | EARS-pattern requirements, link set, and the REQ_CDT_003 verification gap. |
 | [Real-time dashboard](docs/dashboard.md) | Pacing, `RuntimeObject` polling, and troubleshooting. |
+| [Advanced physiology (Phase 2)](docs/advanced-physiology.md) | v2 model: Hill receptor binding, closed-loop baroreflex, virtual patient cohort, PRCC sensitivity. |
 | [Reference](docs/reference.md) | Parameters, MCP tools, and file map. |
 
 The built output (`./site/`) is gitignored. To publish to GitHub Pages, run `mkdocs gh-deploy` from a branch with push access; it publishes to the `gh-pages` branch.
@@ -231,6 +250,11 @@ The built output (`./site/`) is gitignored. To publish to GitHub Pages, run `mkd
 [Prompt 6] Generate verification test     -- model_test (Gherkin)
 [Prompt 7] Draft engineering requirements -- generate-requirement-drafts skill (slreq)
 [Prompt 8] Real-time dashboard            -- realtime_dashboard.m (uifigure + pacing)
+
+--- Phase 2 deep dive (optional) ---
+[Prompt 9]  Hill/Emax receptor binding    -- model_edit refactor of HeartRateModel
+[Prompt 10] Baroreflex feedback loop      -- model_edit + Simulink Control Design linearize
+[Prompt 11] Virtual patient cohort + PRCC -- parsim Monte Carlo + sensitivity tornado
 ```
 
 ---

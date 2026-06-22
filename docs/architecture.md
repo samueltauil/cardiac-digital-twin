@@ -166,14 +166,16 @@ SVR is held constant in this model. Beta-blockers have very little direct effect
 
 ## Why this structure (and not something else)
 
-| Alternative | Why it was *not* chosen for this demo |
-|---|---|
-| Receptor-binding PD model (a Hill or Emax curve, where the dose-response saturates at high doses) | Adds curve-fitting complexity and parameter ambiguity. The linear gain is good to within \(\pm 5\) % in the therapeutic dose range and stays auditable. |
-| Two-compartment PK (drug distributes into a peripheral tissue compartment as well as the blood) | Captures distribution kinetics that are not needed for a steady-state dose-change question. The one-compartment model gives the same steady state and the right transient *shape*. |
-| Closed-loop baroreflex (the body's automatic blood-pressure feedback that nudges HR and SVR when MAP changes) | More realistic, but doubles the model complexity and obscures the linear traceability the demo is built around. |
-| Stateflow control logic | Belongs in a closed-loop controller demo, not a plant model. |
+The v1 model is intentionally pedagogical. The three biggest physiological gaps below are each addressed in the v2 model, documented in [Advanced physiology (Phase 2)](advanced-physiology.md):
 
-The model is *deliberately* a pedagogical plant. Every parameter has units, a clinical reference, and a single role in one formula. That is what makes the Copilot workflow legible: every prompt about a parameter or a signal has an unambiguous answer.
+| Alternative considered for v1 | Why it was *not* chosen for v1 | v2 status |
+|---|---|---|
+| Receptor-binding PD model (a Hill or Emax curve, where the dose-response saturates at high doses) | Adds curve-fitting complexity and parameter ambiguity. The linear gain is good to within \(\pm 5\) % in the therapeutic dose range and stays auditable. | Implemented (Prompt 9) |
+| Closed-loop baroreflex (the body's automatic blood-pressure feedback that nudges HR and SVR when MAP changes) | More realistic, but doubles the model complexity and obscures the linear traceability the demo is built around. | Implemented (Prompt 10) |
+| Two-compartment PK (drug distributes into a peripheral tissue compartment as well as the blood) | Captures distribution kinetics that are not needed for a steady-state dose-change question. The one-compartment model gives the same steady state and the right transient *shape*. | Not implemented |
+| Stateflow control logic | Belongs in a closed-loop controller demo, not a plant model. | Not implemented |
+
+v1 is *deliberately* a pedagogical plant: every parameter has units, a clinical reference, and a single role in one formula. That is what makes the Copilot workflow legible for the live demo. v2 keeps that traceability while adding the nonlinearity, feedback, and population variability needed for a more realistic pharmacological workbench.
 
 ---
 

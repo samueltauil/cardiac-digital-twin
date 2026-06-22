@@ -230,3 +230,118 @@ respond to the dose change?"*
 | 8 | 40–60 s | ~8 min |
 
 **Total live demo: ~8 minutes** (target: under 10 minutes with narration)
+
+---
+
+## Phase 2 — Optional deep dive (Prompts 9–11)
+
+The first 8 prompts are the polished live demo. Prompts 9 through 11 are an
+**optional deep dive** for an engineering audience that wants to see Copilot
+handle structural refactors, feedback-loop wiring, and Monte Carlo workflows.
+They use a second model, `CardiacDigitalTwin_v2.slx`, kept alongside v1 so the
+linear demo stays intact.
+
+Plan an extra **5 to 10 minutes** total if you run any of these, plus about
+**3 to 4 minutes of wall-clock** for the cohort simulation in Prompt 11.
+
+---
+
+## Prompt 9 — Nonlinear receptor binding (Hill/Emax)
+
+```
+The v1 HeartRateModel uses a linear gain (beta_hr_sensitivity) to relate
+plasma concentration to heart-rate drop. That's not how real receptor
+binding works — it saturates. Build a v2 model called CardiacDigitalTwin_v2
+that replaces the linear gain with a Hill/Emax expression:
+
+  DrugEffect(C) = emax_bpm * C^hill_n / (ec50_mg^hill_n + C^hill_n)
+
+with emax_bpm=18, ec50_mg=35, hill_n=1.5. Save the new model and run a
+50 mg vs 60 mg comparison. Show me how the marginal HR drop changes.
+```
+
+**Expected MCP tools:** `model_read`, `model_edit`, `evaluate_matlab_code`
+**Expected output:** A new `model/CardiacDigitalTwin_v2.slx`, a v2 params file,
+and a comparison showing the marginal HR drop at +20% dose shrinks from
+about −2.4 bpm (v1 linear) to about −0.9 bpm (v2 Hill saturation).
+
+**Narrative bridge:**
+*"In real clinical pharmacology, doubling a dose almost never doubles the
+effect. Copilot just replaced a single Gain block with a Hill equation and
+the model immediately shows the saturation. That's the clinical reasoning
+the cardiologist needs to set the right dose."*
+
+---
+
+## Prompt 10 — Close the cardiovascular loop with a baroreflex
+
+```
+Now close the cardiovascular loop. Add a BaroreflexController subsystem
+to CardiacDigitalTwin_v2 that takes MAP as input and outputs an HR
+correction equal to baroreflex_gain * (map_setpoint_mmHg - MAP), filtered
+through a first-order lag with time constant baroreflex_tau. Route that
+correction back as a second input to HeartRateModel.
+
+Then linearize the closed loop around steady state and confirm it's
+stable. Report the closed-loop poles and the change in DC gain compared
+to the open-loop case.
+```
+
+**Expected MCP tools:** `model_edit` (multiple subsystem + wiring ops),
+`evaluate_matlab_code` (linearize + analysis), `check_matlab_code`
+**Expected output:** New `BaroreflexController` subsystem, closed feedback
+loop wired in, `analysis/linearize_baroreflex.m` run. Reports DC gain
+drops from −0.152 to −0.111 bpm/mg (about 27% reduction) and adds a
+slow stable pole at −0.023 rad/s. Closed loop is stable.
+
+**Narrative bridge:**
+*"Real cardiovascular systems aren't open loops. When the drug lowers
+blood pressure, the baroreflex senses it and pushes heart rate back up.
+Copilot just closed that loop and verified the closed system is still
+stable using linearization — that's a normal control-engineering check
+on what was a pharmacology problem ten seconds ago."*
+
+---
+
+## Prompt 11 — Virtual patient cohort with PRCC sensitivity
+
+```
+A nominal patient is a starting point, not a population. Write a Monte
+Carlo cohort wrapper that samples 100 virtual patients with log-normal
+PK and Hill parameters and normal physiology parameters around the
+nominal values. Run each patient at both 50 mg and 60 mg using parsim
+(or sim if Parallel Computing Toolbox isn't available). Then compute a
+PRCC sensitivity tornado against HR at 60 mg and tell me which
+parameters dominate the response.
+```
+
+**Expected MCP tools:** `evaluate_matlab_code` (parsim cohort + PRCC),
+`check_matlab_code` (validate generated scripts)
+**Expected output:** `analysis/run_patient_cohort.m` and
+`analysis/sensitivity_tornado.m` run. Cohort summary shows ~9 bpm
+standard deviation around the nominal HR mean. Tornado ranks Baseline HR
+(PRCC +0.96) as the dominant driver, followed by SVR (−0.77) and stroke
+volume (−0.67). Drug-specific parameters (Emax, EC50) rank lower because
+the cohort spread in baseline physiology dominates the dose response.
+
+**Narrative bridge:**
+*"And here's the population view. The interesting story isn't the mean —
+it's the spread. About a quarter of these virtual patients respond much
+less than the nominal patient, and a few respond much more. The PRCC
+tornado tells the clinician where their per-patient calibration matters
+most: baseline heart rate and vascular resistance, not the drug dose."*
+
+---
+
+## Phase 2 Timing Guide
+
+| Prompt | Expected Duration | Cumulative |
+|--------|------------------:|-----------:|
+| 9      | 60–90 s (model refactor) | ~1.5 min |
+| 10     | 90–120 s (subsystem + linearization) | ~3.5 min |
+| 11     | 90–180 s (cohort sim runs in background) | ~5–6 min |
+
+**Total Phase 2 deep dive: 5 to 10 minutes** depending on cohort wall-clock.
+Phase 2 is end-to-end about 3 to 4 minutes of MATLAB simulation time on a
+machine without Parallel Computing Toolbox; with parsim and a 4-worker pool
+it drops to under 60 s.
