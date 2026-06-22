@@ -24,6 +24,10 @@ CardiacDigitalTwin.slxc
 *.png
 *.jpg
 
+# But: do track the README / docs images intentionally committed under docs/images/
+!docs/images/*.png
+!docs/images/*.jpg
+
 # OS files
 .DS_Store
 Thumbs.db
