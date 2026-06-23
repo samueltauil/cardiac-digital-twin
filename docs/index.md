@@ -89,6 +89,7 @@ That is exactly where Copilot, augmented by the Simulink Agentic Toolkit's MCP s
 | [The Copilot workflow](copilot-workflow.md) | You want to see the full prompt-by-prompt narrative, the core of the demo. |
 | [Model architecture](architecture.md) | You want to know what each Simulink subsystem does and how they connect. |
 | [Physiology and math](physiology.md) | You want the formulas, calibration choices, and clinical rationale. |
+| [Advanced physiology](advanced-physiology.md) | You want a plain-language tour of the Hill/Emax curve, the baroreflex loop, and the virtual patient cohort — plus closed-loop linearization and the PRCC tornado. |
 | [Validation](validation.md) | You want the Gherkin test and the verification methodology. |
 | [Requirements](requirements.md) | You want the formal engineering requirements (.slreqx) and traceability links. |
 | [Real-time dashboard](dashboard.md) | You want the live `uifigure` dashboard and pacing details. |

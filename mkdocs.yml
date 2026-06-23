@@ -109,7 +109,7 @@ nav:
   - The Copilot Workflow: copilot-workflow.md
   - Model Architecture: architecture.md
   - Physiology & Math: physiology.md
-  - Advanced Physiology (Phase 2): advanced-physiology.md
+  - Advanced Physiology: advanced-physiology.md
   - Validation: validation.md
   - Requirements: requirements.md
   - Real-Time Dashboard: dashboard.md
