@@ -33,7 +33,7 @@ CardiacDigitalTwin.slxc
 Thumbs.db
 desktop.ini
 
-# VS Code local settings (mcp.json is intentionally tracked)
+# VS Code local settings (mcp.json files are intentionally tracked)
 .vscode/settings.json
 .vscode/launch.json
 

@@ -1,12 +1,13 @@
 {
-    "servers": {
+    "mcpServers": {
         "matlab-simulink": {
             "type": "stdio",
             "command": "${env:USERPROFILE}\\.matlab\\agentic-toolkits\\bin\\matlab-mcp-server.exe",
             "args": [
                 "--matlab-session-mode=existing",
                 "--extension-file=${env:USERPROFILE}\\.matlab\\agentic-toolkits\\simulink\\tools\\tools.json"
-            ]
+            ],
+            "tools": ["*"]
         }
     }
 }

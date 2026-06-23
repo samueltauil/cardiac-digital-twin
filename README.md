@@ -81,8 +81,11 @@ cardiac-digital-twin/
 |       |-- 06-generate-validation-test.prompt.md
 |       |-- 07-generate-requirements.prompt.md
 |       `-- 08-realtime-dashboard.prompt.md
+|-- .github/
+|   |-- mcp.json                    Copilot CLI repo-level MCP config (mcpServers)
+|   `-- ...                         (instructions, agents, prompts, workflows)
 |-- .vscode/
-|   `-- mcp.json                    Workspace MCP server config (Windows template)
+|   `-- mcp.json                    VS Code workspace MCP config (servers)
 |-- mkdocs.yml                      MkDocs site configuration
 |-- docs/                           MkDocs source (Material theme, MathJax, Mermaid)
 |-- model/
@@ -156,9 +159,18 @@ See [`setup/mcp-configuration.md`](setup/mcp-configuration.md) for the full setu
 
 ### Step 2. Configure the workspace MCP server
 
-This repo ships `.vscode/mcp.json` pre-configured for Windows. After the automated install, no edits are needed on Windows. For macOS or Linux, replace the paths in `.vscode/mcp.json` with the platform-specific variants documented in [`setup/mcp-configuration.md`](setup/mcp-configuration.md).
+This repo ships **two** repo-level MCP config files, both pre-configured for Windows:
+
+- `.github/mcp.json` — read by **GitHub Copilot CLI** (`copilot` command). Uses the `mcpServers` schema.
+- `.vscode/mcp.json` — read by **VS Code** (Copilot in Agent mode). Uses the `servers` schema.
+
+Both reference the same `matlab-simulink` server, so installing once and running either Copilot surface from the repo root works out of the box on Windows. For macOS or Linux, replace the paths in **both** files with the platform-specific variants documented in [`setup/mcp-configuration.md`](setup/mcp-configuration.md).
 
 > **Copilot CLI users:** The CLI stores MCP config in `~/.copilot/mcp-config.json`. Run `/mcp add` in interactive mode, or edit the file directly using the format in [`setup/mcp-configuration.md`](setup/mcp-configuration.md#copilot-cli).
+
+The GitHub Copilot CLI can run directly inside MATLAB's integrated terminal, so the agent operates from the repo root in the same session that hosts the model. Below it is validating both repo-level `mcp.json` files against the live `CardiacDigitalTwin` workspace.
+
+![GitHub Copilot CLI running in the MATLAB integrated terminal, validating the repo-level mcp.json files for the cardiac-digital-twin project](docs/images/setup-copilot-cli-matlab.png)
 
 Reload VS Code after any MCP configuration change: `Cmd/Ctrl+Shift+P`, then `Developer: Reload Window`.
 

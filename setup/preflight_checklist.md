@@ -21,7 +21,7 @@ Mark each step ✅ before proceeding to the next.
 
 | # | Step | Command / Action | Expected Result |
 |---|------|-----------------|----------------|
-| 6 | Verify `.vscode/mcp.json` | Open `.vscode/mcp.json` in VS Code | File exists; `--extension-file` path points to an installed `tools.json` |
+| 6 | Verify MCP config | Open `.github/mcp.json` (Copilot CLI) and/or `.vscode/mcp.json` (VS Code) | File exists; `--extension-file` path points to an installed `tools.json` |
 | 7 | Check MCP server status | `Ctrl+Shift+P` → `MCP: List Servers` | `simulink-agentic-toolkit` is listed and **running** |
 | 8 | Reload VS Code after MATLAB init | `Ctrl+Shift+P` → `Developer: Reload Window` | VS Code reloads; MCP server reattaches to MATLAB session |
 

@@ -12,10 +12,11 @@ GitHub Copilot can call Simulink tools (`model_overview`, `model_read`,
 The connection between Copilot and MATLAB/Simulink involves three layers:
 
 ```
-GitHub Copilot (VS Code)
+GitHub Copilot (VS Code or Copilot CLI)
        │  MCP (stdio)
        ▼
-MATLAB MCP Core Server   ←── .vscode/mcp.json tells VS Code where to find it
+MATLAB MCP Core Server   ←── .github/mcp.json   (Copilot CLI; repo-level)
+                         ←── .vscode/mcp.json   (VS Code workspace)
        │  MATLAB Connector
        ▼
 Running MATLAB session   ←── satk_initialize shares the session
@@ -23,6 +24,11 @@ Running MATLAB session   ←── satk_initialize shares the session
        ▼
 CardiacDigitalTwin.slx
 ```
+
+This repo ships **both** files so the same MCP server is picked up whether you
+run Copilot inside VS Code or via the `copilot` CLI. They reference the same
+binary; only the JSON root key differs (`servers` for VS Code, `mcpServers`
+for the CLI).
 
 ---
 
@@ -81,16 +87,50 @@ After the wizard, setup writes the MCP config to your agent's config file and cr
 
 ---
 
-## Step 3 — Configure MCP for This Project (Workspace-Level)
+## Step 3 — Configure MCP for This Project (Repo-Level)
 
 The automated setup writes a **global** user-level config. This repo also  
-ships a **workspace-level** `.vscode/mcp.json` template that takes precedence  
-for this project and can be committed to share the configuration with your team.
+ships **repo-level** templates that take precedence for this project and  
+can be committed to share the configuration with your team:
+
+| File | Read by | Root JSON key |
+|------|---------|---------------|
+| `.github/mcp.json` | GitHub Copilot CLI (`copilot` command) | `mcpServers` |
+| `.vscode/mcp.json` | VS Code (Copilot in Agent mode) | `servers` |
+
+Both files describe the **same** `matlab-simulink` server. You only need to
+edit the platform-specific paths once per file when switching OS.
+
+> **Why two files?** Copilot CLI looks for `.mcp.json` or `.github/mcp.json`
+> using the `mcpServers` schema (same as `~/.copilot/mcp-config.json`).
+> VS Code only auto-discovers `.vscode/mcp.json` and uses the `servers`
+> schema. Keeping both in sync gives every team member a working setup
+> regardless of which Copilot surface they use.
 
 ### Windows (default after automated install)
 
-The template at `.vscode/mcp.json` uses `${env:USERPROFILE}` to resolve  
-the install path automatically — no edits needed if you used automated setup.
+The shipped templates use `${env:USERPROFILE}` to resolve the install path  
+automatically — no edits needed if you used the automated setup.
+
+**`.github/mcp.json`** (Copilot CLI):
+
+```json
+{
+    "mcpServers": {
+        "matlab-simulink": {
+            "type": "stdio",
+            "command": "${env:USERPROFILE}\\.matlab\\agentic-toolkits\\bin\\matlab-mcp-core-server.exe",
+            "args": [
+                "--matlab-session-mode=existing",
+                "--extension-file=${env:USERPROFILE}\\.matlab\\agentic-toolkits\\simulink\\tools\\tools.json"
+            ],
+            "tools": ["*"]
+        }
+    }
+}
+```
+
+**`.vscode/mcp.json`** (VS Code):
 
 ```json
 {
@@ -107,47 +147,29 @@ the install path automatically — no edits needed if you used automated setup.
 }
 ```
 
-### macOS (Apple Silicon)
+### macOS (Apple Silicon) / Linux
 
-Replace `.vscode/mcp.json` contents with:
+Replace the `command` and `--extension-file` paths in **both** files with:
 
-```json
-{
-    "servers": {
-        "matlab-simulink": {
-            "type": "stdio",
-            "command": "${env:HOME}/.matlab/agentic-toolkits/bin/matlab-mcp-core-server",
-            "args": [
-                "--matlab-session-mode=existing",
-                "--extension-file=${env:HOME}/.matlab/agentic-toolkits/simulink/tools/tools.json"
-            ]
-        }
-    }
-}
-```
+- `command`: `${env:HOME}/.matlab/agentic-toolkits/bin/matlab-mcp-core-server`
+- `--extension-file=${env:HOME}/.matlab/agentic-toolkits/simulink/tools/tools.json`
 
-### Linux
-
-Same as macOS above — `${env:HOME}` resolves to your home directory.
+Keep the rest of each file unchanged (preserve `mcpServers` vs `servers`
+at the root).
 
 ### Manual install (custom binary path)
 
 If you installed the MCP server binary to a non-default location, replace  
-the `command` value with the full absolute path to your binary:
+the `command` value in both files with the full absolute path to your
+binary, and the `--extension-file` argument with the absolute path to your
+`tools.json`. For example:
 
-```json
-{
-    "servers": {
-        "matlab-simulink": {
-            "type": "stdio",
-            "command": "C:\\Tools\\matlab-mcp-core-server.exe",
-            "args": [
-                "--matlab-session-mode=existing",
-                "--extension-file=C:\\Tools\\simulink-agentic-toolkit\\tools\\tools.json"
-            ]
-        }
-    }
-}
+```
+"command": "C:\\Tools\\matlab-mcp-core-server.exe",
+"args": [
+    "--matlab-session-mode=existing",
+    "--extension-file=C:\\Tools\\simulink-agentic-toolkit\\tools\\tools.json"
+]
 ```
 
 > **Key flags explained:**
@@ -216,7 +238,7 @@ After updating: re-run `satk_initialize` in MATLAB and restart your Copilot sess
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Copilot doesn't call any Simulink tools | MCP server not configured or not running | Check `.vscode/mcp.json` path is correct; reload VS Code |
+| Copilot doesn't call any Simulink tools | MCP server not configured or not running | Check `.github/mcp.json` (Copilot CLI) or `.vscode/mcp.json` (VS Code) paths; reload the host |
 | `model_overview` returns empty or errors | MATLAB session not shared | Run `satk_initialize` in MATLAB; reload VS Code |
 | "Undefined function satk_initialize" | Toolkit path not added | Run `addpath("~/.matlab/agentic-toolkits/simulink")` then `satk_initialize` |
 | MCP server binary not found | Installer wrote to different path | Run `setupAgenticToolkit("status")` to find actual path |
@@ -244,34 +266,27 @@ setupAgenticToolkit("configure")
 
 ## Copilot CLI
 
-For **GitHub Copilot CLI** (`copilot` command), MCP servers are configured in
-`~/.copilot/mcp-config.json` — not in `.vscode/mcp.json`.
+**GitHub Copilot CLI** (`copilot` command) reads MCP server configuration
+from, in order of precedence:
 
-Use the interactive command to add the server:
+1. `.mcp.json` (project root)
+2. `.github/mcp.json` (repo-level — **shipped by this repo**)
+3. `~/.copilot/mcp-config.json` (user-level)
+
+Because `.github/mcp.json` is committed, anyone who clones the repo and runs
+`copilot` from the repo root picks up the `matlab-simulink` server with no
+extra setup beyond installing the MATLAB MCP Core Server binary.
+
+To override or add servers per-user, edit `~/.copilot/mcp-config.json` or
+use the interactive command inside `copilot`:
 
 ```
 /mcp add
 ```
 
-Or edit `~/.copilot/mcp-config.json` directly:
-
-```json
-{
-  "mcpServers": {
-    "matlab-simulink": {
-      "type": "stdio",
-      "command": "<path-to>/matlab-mcp-core-server",
-      "args": [
-        "--matlab-session-mode=existing",
-        "--extension-file=<path-to>/simulink/tools/tools.json"
-      ],
-      "tools": ["*"]
-    }
-  }
-}
-```
-
-Replace `<path-to>` with the actual install path from `setupAgenticToolkit("status")`.
+The user-level file uses the same `mcpServers` schema as `.github/mcp.json`.
+Replace any `<path-to>` placeholders with the actual install path reported
+by `setupAgenticToolkit("status")`.
 
 ---
 

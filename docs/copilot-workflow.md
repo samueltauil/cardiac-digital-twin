@@ -4,6 +4,10 @@ The centre of gravity of this demo isn't the model. It's the **prompt sequence t
 
 This page walks through what each prompt does, which MCP tool answers it, and why that combination matters.
 
+The agent can drive the workflow from either Copilot surface. Here the **GitHub Copilot CLI** runs inside MATLAB's integrated terminal, operating on the live `CardiacDigitalTwin` project from the repo root — validating the repo-level `mcp.json` files in the same session that hosts the model.
+
+![GitHub Copilot CLI running in the MATLAB integrated terminal, validating the repo-level mcp.json files for the cardiac-digital-twin project](images/setup-copilot-cli-matlab.png)
+
 ---
 
 ## The full eight-prompt sequence

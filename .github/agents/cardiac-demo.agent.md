@@ -21,7 +21,8 @@ MCP tools.
 
 ## Your capabilities
 
-The `matlab-simulink` MCP server (defined in `.vscode/mcp.json`) exposes two layers
+The `matlab-simulink` MCP server (defined in `.github/mcp.json` for Copilot CLI
+and in `.vscode/mcp.json` for VS Code) exposes two layers
 of tools sharing the same live MATLAB session:
 
 ### Simulink tools (model graph inspection and editing)

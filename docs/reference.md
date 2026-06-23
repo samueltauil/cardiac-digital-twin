@@ -47,7 +47,7 @@ Derived constants (printed at startup, not used by Simulink):
 
 ## MCP tools used by the demo
 
-The `matlab-simulink` MCP server (defined in `.vscode/mcp.json`) exposes both Simulink graph tools and MATLAB code tools. Every prompt in the demo routes to one or more.
+The `matlab-simulink` MCP server (defined in `.github/mcp.json` for Copilot CLI and in `.vscode/mcp.json` for VS Code) exposes both Simulink graph tools and MATLAB code tools. Every prompt in the demo routes to one or more.
 
 ### Simulink tools
 
@@ -71,7 +71,7 @@ The `matlab-simulink` MCP server (defined in `.vscode/mcp.json`) exposes both Si
 | `check_matlab_code` | Pre-commit | Static analysis on a `.m` file. |
 | `detect_matlab_toolboxes` | Diagnostics | List installed toolboxes when a feature requires one. |
 
-The tools are loaded automatically when Copilot is invoked in Agent mode with the workspace-level `.vscode/mcp.json` active.
+The tools are loaded automatically when Copilot is invoked — in VS Code Agent mode via the workspace-level `.vscode/mcp.json`, or from the `copilot` CLI via the repo-level `.github/mcp.json`.
 
 ---
 
@@ -121,7 +121,7 @@ Each prompt is a reusable Copilot slash command, stored in [`.github/prompts/`](
 | `*.feature` | tracked | Gherkin tests are hand-authored. |
 | `*.slreqx` | tracked | Engineering requirements are hand-authored. |
 | `*.md`, `mkdocs.yml`, `docs/**` | tracked | Documentation. |
-| `.github/**`, `.vscode/mcp.json` | tracked | Repo-level Copilot and MCP configuration. |
+| `.github/**`, `.vscode/mcp.json` | tracked | Repo-level Copilot and MCP configuration (`.github/mcp.json` for Copilot CLI, `.vscode/mcp.json` for VS Code). |
 | `CardiacDigitalTwin.slx` | **gitignored** | Built by `create_cardiac_model.m`. |
 | `*.slxc`, `slprj/`, `*.mat` | **gitignored** | Build and cache artifacts. Regenerated on every build. |
 | `*.autosave`, `*~mdl.slmx`, `*_harnessInfo.xml` | **gitignored** | Transient Simulink editor and test files. |
