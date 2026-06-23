@@ -8,23 +8,27 @@ This repository is a demo showing **GitHub Copilot + Simulink Agentic Toolkit (M
 orchestrating a Simulink cardiac digital twin. The primary scenario is simulating the effect of a
 beta-blocker (metoprolol) dosage increase of 20% (50 mg → 60 mg) on key haemodynamic outputs.
 
-The model (`CardiacDigitalTwin.slx`) is a four-subsystem Simulink model:
+The model (`CardiacDigitalTwin.slx`) is a five-subsystem closed-loop Simulink model:
 
-| Subsystem | Input | Output |
-|-----------|-------|--------|
+| Subsystem | Input(s) | Output |
+|-----------|----------|--------|
 | `BetaBlockerPK` | `beta_blocker_dose_mg` (mg) | plasma concentration |
-| `HeartRateModel` | plasma concentration | heart rate (bpm) |
+| `HeartRateModel` | plasma concentration + baroreflex correction | heart rate (bpm) |
 | `CardiacOutputModel` | heart rate (bpm) | cardiac output (L/min) |
 | `BloodPressureModel` | cardiac output (L/min) | mean arterial pressure (mmHg) |
+| `BaroreflexController` | mean arterial pressure (mmHg) | HR correction (bpm) (closes loop to HeartRateModel) |
 
 Key workspace parameters (defined in `model/cardiac_params.m`):
-- `beta_blocker_dose_mg = 50` — current dose; the demo changes this to 60
+- `beta_blocker_dose_mg = 60` — current dose; the demo runs 50 mg vs 60 mg
 - `baseline_heart_rate = 75` — drug-free resting HR
-- `beta_hr_sensitivity = 0.24` — bpm reduction per mg of metoprolol
+- `emax_bpm = 18`, `ec50_mg = 35`, `hill_n = 1.5` — Hill/Emax receptor binding parameters
 - `pk_time_constant = 1800` — first-order PK time constant (seconds)
 - `stroke_volume_mL = 70`, `svr_mmHg_min_per_L = 18`
+- `map_setpoint_mmHg = 94`, `baroreflex_gain = 0.30`, `baroreflex_tau = 60` — closed-loop autonomic feedback
 
-Expected steady-state results at 50 mg: HR ≈ 63 bpm, CO ≈ 4.41 L/min, MAP ≈ 79.4 mmHg.
+Expected closed-loop steady-state at 50 mg: HR ≈ 67.4 bpm, CO ≈ 4.72 L/min, MAP ≈ 84.9 mmHg.
+At 60 mg (+20%): HR ≈ 66.6 bpm, CO ≈ 4.66 L/min, MAP ≈ 83.9 mmHg.
+The marginal HR drop is small (~0.9 bpm) because the Hill curve saturates near Emax and the baroreflex partially restores HR.
 
 ## Simulink MCP tools available
 

@@ -14,26 +14,28 @@ This documentation is the companion to the live demo. It explains what the model
 
 ## What it is
 
-A four-stage Simulink model of an adult patient's haemodynamic response to oral metoprolol, a beta-blocker.
+A five-subsystem closed-loop Simulink model of an adult patient's haemodynamic response to oral metoprolol, a beta-blocker.
 
 ```mermaid
 flowchart LR
     D[β-Blocker dose<br/>beta_blocker_dose_mg] --> PK[BetaBlockerPK<br/>Pharmacokinetics]
-    PK --> HR[HeartRateModel<br/>Chronotropic response]
+    PK --> HR[HeartRateModel<br/>Hill/Emax + baroreflex]
     HR --> CO[CardiacOutputModel<br/>CO = HR x SV]
     CO --> MAP[BloodPressureModel<br/>MAP = CO x SVR]
+    MAP --> BARO[BaroreflexController<br/>autonomic feedback]
+    BARO -.->|HR correction| HR
     HR -.-> HRS([HR scope])
     CO -.-> COS([CO scope])
     MAP -.-> MAPS([MAP scope])
 ```
 
-Each subsystem is calibrated against published clinical data so the steady-state behaviour is physiologically plausible.
+Each subsystem is calibrated against published clinical data so the steady-state behaviour is physiologically plausible. A baroreflex loop feeds mean arterial pressure back into heart rate, just as the body's autonomic system does.
 
 | Output at 50 mg metoprolol succinate | Model value | Clinical reference |
 |---|:---:|:---:|
-| Heart rate | 63 bpm | 60 to 65 bpm |
-| Cardiac output | 4.4 L/min | 4 to 5 L/min |
-| Mean arterial pressure | 79 mmHg | 75 to 85 mmHg |
+| Heart rate | 67 bpm | 60 to 70 bpm |
+| Cardiac output | 4.7 L/min | 4 to 5 L/min |
+| Mean arterial pressure | 85 mmHg | 75 to 95 mmHg |
 
 ---
 
@@ -141,20 +143,18 @@ cardiac-digital-twin/
 
 !!! info "About the demo's scope"
 
-    This model is a teaching artifact, not a regulated medical device. The v1
-    model uses a deliberately simple linear-PK and linear-gain structure so
-    the relationship between every parameter and every clinical outcome is
-    immediately auditable; that is the right shape for the 7-prompt live
-    demo.
+    This model is a teaching artifact, not a regulated medical device. It
+    keeps a deliberately legible structure — every parameter maps to one
+    clinical outcome through one formula — while still including the two
+    physiological effects that matter most for a dose-change question:
+    saturating receptor binding and autonomic feedback.
 
-    Phase 2 closes the three biggest gaps in v1, each via one additional
-    Copilot prompt and one analysis script. The advanced model lives in
-    [`CardiacDigitalTwin_v2.slx`](https://github.com/samueltauil/cardiac-digital-twin/blob/main/model/CardiacDigitalTwin_v2.slx)
-    and is documented in [Advanced physiology (Phase 2)](advanced-physiology.md):
+    The single `CardiacDigitalTwin.slx` model combines all three of the
+    features documented in [Advanced physiology](advanced-physiology.md):
 
-    - Nonlinear receptor binding via a Hill/Emax equation (Prompt 9).
-    - Closed-loop baroreflex feedback from MAP back to HR (Prompt 10).
-    - Monte Carlo virtual patient cohort with PRCC sensitivity tornado (Prompt 11).
+    - Nonlinear receptor binding via a Hill/Emax equation.
+    - Closed-loop baroreflex feedback from MAP back to HR.
+    - A Monte Carlo virtual patient cohort with PRCC sensitivity tornado.
 
-    The v1 model still drives the original 7-prompt demo; v2 is the
-    optional deep dive.
+    The 8-prompt live demo drives this model end to end; the advanced page
+    adds optional deep-dive prompts that analyse each feature in isolation.

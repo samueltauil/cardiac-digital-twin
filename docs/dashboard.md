@@ -8,7 +8,7 @@ This is Prompt 8 in the demo sequence: the visualisation closer that turns the n
 
 ![Real-time dashboard showing both 50 mg and 60 mg runs overlaid](images/dashboard.png)
 
-*Final dashboard state after both runs complete. Gauges show the live 60 mg values (HR 60.7, CO 4.24, MAP 76.5). The time-history axes overlay the two runs: red is 50 mg baseline, blue is 60 mg modified. The delta strip at the bottom shows the steady-state difference.*
+*Final dashboard state after both runs complete. Gauges show the live 60 mg values (HR 66.6, CO 4.66, MAP 83.9). The time-history axes overlay the two runs: red is 50 mg baseline, blue is 60 mg modified. The delta strip at the bottom shows the steady-state difference.*
 
 ---
 
@@ -94,7 +94,7 @@ Reading these in a polling loop, gated on `tNow > lastT` so we only update on ne
 
 ### Polling leaf blocks, not virtual subsystems
 
-The four top-level subsystems (`BetaBlockerPK`, `HeartRateModel`, `CardiacOutputModel`, `BloodPressureModel`) are **virtual subsystems**. Virtual subsystems are graphical groupings only: at compile time, Simulink inlines their contents into the parent's execution context. They have no runtime of their own and `get_param(virtualSubsystem, 'RuntimeObject')` returns empty during a run.
+The five top-level subsystems (`BetaBlockerPK`, `HeartRateModel`, `CardiacOutputModel`, `BloodPressureModel`, `BaroreflexController`) are **virtual subsystems**. Virtual subsystems are graphical groupings only: at compile time, Simulink inlines their contents into the parent's execution context. They have no runtime of their own and `get_param(virtualSubsystem, 'RuntimeObject')` returns empty during a run.
 
 The fix is to poll the **leaf blocks inside** each subsystem instead:
 
@@ -114,7 +114,7 @@ Each is the last block in its subsystem, so its `OutputPort(1).Data` is the subs
 |---|---|
 | Use Simulink Pacing rather than `pause()` in a script loop | Pacing is solver-aware. The model itself slows down so the *physics* plays out at the chosen rate, not just the visualisation. |
 | Use `RuntimeObject` rather than `To Workspace` logging | `To Workspace` data is only available *after* `sim()` returns. `RuntimeObject` is live. |
-| Poll leaf blocks rather than the four top-level subsystems | Virtual subsystems get inlined at compile time and have no live runtime. The leaf Saturation/Gain blocks at the bottom of each subsystem do. |
+| Poll leaf blocks rather than the five top-level subsystems | Virtual subsystems get inlined at compile time and have no live runtime. The leaf Saturation/Gain blocks at the bottom of each subsystem do. |
 | Flip `ReturnWorkspaceOutputs` to `off` during the run | With the default `on`, asynchronous `SimulationCommand='start'` writes results into a `SimulationOutput` object rather than directly to `tout`/`HR_out`/etc., breaking the post-run steady-state read. |
 | Use `animatedline` rather than `plot` plus `XData` updates | `animatedline` was built for this. It is GPU-friendly, append-only, and `addpoints` is amortised. |
 | Run both doses in the **same axes** | Overlay is the comparison. Two side-by-side panels would force the viewer to mentally subtract two curves. |
@@ -126,14 +126,14 @@ Each is the last block in its subsystem, so its `OutputPort(1).Data` is the subs
 ## What the viewer sees
 
 1. **Setup pause (about 1 s).** Dashboard window opens. Gauges sit at zero.
-2. **Run 1, 50 mg baseline (about 18 s).** Status reads *"running Baseline 50 mg"*. Gauges climb to about 63 bpm, 4.4 L/min, 79 mmHg. Red traces accumulate on the time-history axes.
+2. **Run 1, 50 mg baseline (about 18 s).** Status reads *"running Baseline 50 mg"*. Gauges climb to about 67 bpm, 4.7 L/min, 85 mmHg. Red traces accumulate on the time-history axes.
 3. **Brief transition (about 1 s).** Status updates to *"running Increased 60 mg"*.
 4. **Run 2, 60 mg modified (about 18 s).** Blue traces draw on the *same* axes as run 1. Gauges land slightly lower than the first run.
 5. **Final view.** Both traces visible. Δ readout populates at the bottom:
 
     ```
     Δ steady-state (60 mg vs 50 mg):
-      HR -2.38 bpm  |  CO -0.167 L/min  |  MAP -3.00 mmHg
+      HR -0.85 bpm  |  CO -0.059 L/min  |  MAP -1.07 mmHg
     ```
 
 ---
@@ -154,7 +154,7 @@ Skip it if the demo is running short on time. Run it if you have at least 90 sec
 
 A few directions the dashboard could grow.
 
-Sensitivity sliders: a live `uislider` on `beta_hr_sensitivity` that updates the model parameter mid-run and shows the effect.
+Sensitivity sliders: a live `uislider` on `baroreflex_gain` that updates the model parameter mid-run and shows the effect.
 
 Patient-profile selector: a dropdown that swaps in different sets of parameters (elderly, heart-failure, athlete) and reruns.
 

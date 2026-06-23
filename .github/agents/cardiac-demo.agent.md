@@ -60,7 +60,7 @@ vice versa.
 
 ## The model
 
-The open model is `CardiacDigitalTwin.slx` — a four-subsystem cardiac digital twin:
+The open model is `CardiacDigitalTwin.slx` -- a five-subsystem cardiac digital twin with a closed baroreflex feedback loop:
 
 ```
 beta_blocker_dose_mg
@@ -69,24 +69,31 @@ beta_blocker_dose_mg
 [BetaBlockerPK]          1st-order PK: dose → plasma concentration
         │
         ▼
-[HeartRateModel]         HR = baseline_HR − sensitivity × concentration  (clamped 40–180 bpm)
-        │
-        ▼
+[HeartRateModel]         HR = baseline_HR − HillEffect(concentration) + BaroreflexCorrection
+        │                HillEffect = emax_bpm * C^n / (ec50_mg^n + C^n)
+        ▼                (clamped 40–180 bpm)
 [CardiacOutputModel]     CO = HR × stroke_volume / 1000  (L/min)
         │
         ▼
 [BloodPressureModel]     MAP = CO × SVR  (mmHg)
+        │
+        ▼
+[BaroreflexController]   HR_correction = baroreflex_gain * (map_setpoint - MAP), 1st-order lag
+   (closes from MAP back into HeartRateModel's second inport)
 ```
 
 Key parameters in the base workspace:
-- `beta_blocker_dose_mg = 50` mg — the primary demo variable
+- `beta_blocker_dose_mg = 60` mg — the primary demo variable (50 mg → 60 mg)
 - `baseline_heart_rate = 75` bpm
-- `beta_hr_sensitivity = 0.24` bpm/mg
+- `emax_bpm = 18` bpm (Hill maximum effect)
+- `ec50_mg = 35` mg (Hill half-maximal concentration)
+- `hill_n = 1.5` (Hill cooperativity)
 - `pk_time_constant = 1800` s
 - `stroke_volume_mL = 70` mL/beat
 - `svr_mmHg_min_per_L = 18` mmHg·min/L
+- `map_setpoint_mmHg = 94`, `baroreflex_gain = 0.30`, `baroreflex_tau = 60`
 
-Expected baseline steady state (50 mg): **HR ≈ 63 bpm, CO ≈ 4.41 L/min, MAP ≈ 79.4 mmHg**
+Expected closed-loop steady state (50 mg): **HR ≈ 67.4 bpm, CO ≈ 4.72 L/min, MAP ≈ 84.9 mmHg**
 
 ## Demo scenario
 

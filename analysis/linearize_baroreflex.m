@@ -1,10 +1,10 @@
 %% linearize_baroreflex.m
-% Phase 2 prompt 10 follow-on: linearize the closed-loop v2 model and
-% inspect the baroreflex's effect on stability.
+% Linearizes the closed-loop cardiac digital twin and inspects the
+% baroreflex's effect on stability.
 %
 % We compute two linearizations:
 %
-%   1. Open-loop  - baroreflex disconnected, gain set to 0.
+%   1. Open-loop   - baroreflex disconnected, gain set to 0.
 %   2. Closed-loop - baroreflex active at the nominal gain.
 %
 % Then we plot the Bode magnitude/phase and print the closed-loop poles.
@@ -13,8 +13,8 @@
 %
 % Requires:
 %   - Simulink Control Design (for linearize)
-%   - cardiac_params_v2.m loaded
-%   - CardiacDigitalTwin_v2.slx built
+%   - cardiac_params.m loaded
+%   - CardiacDigitalTwin.slx built
 
 if ~license('test', 'Simulink_Control_Design')
     warning('linearize_baroreflex:noSCD', ...
@@ -25,9 +25,9 @@ end
 repoRoot = fileparts(fileparts(mfilename('fullpath')));
 addpath(fullfile(repoRoot, 'model'));
 
-run(fullfile(repoRoot, 'model', 'cardiac_params_v2.m'));
+run(fullfile(repoRoot, 'model', 'cardiac_params.m'));
 
-mdl     = 'CardiacDigitalTwin_v2';
+mdl     = 'CardiacDigitalTwin';
 mdlFile = fullfile(repoRoot, 'model', [mdl '.slx']);
 if ~bdIsLoaded(mdl)
     load_system(mdlFile);
@@ -49,7 +49,7 @@ fprintf('Snapshotting steady-state operating point at t = 3600 s ...\n');
 opPoint = findop(mdl, 3600);
 
 %% ── Closed loop (nominal) ─────────────────────────────────────────────
-fprintf('Linearizing closed-loop v2 (baroreflex active) ...\n');
+fprintf('Linearizing closed-loop (baroreflex active) ...\n');
 sys_closed = linearize(mdl, opPoint, io);
 
 %% ── Open loop (baroreflex disconnected) ───────────────────────────────
@@ -60,7 +60,7 @@ cleaner  = onCleanup(@() assignin('base', 'baroreflex_gain', prevGain));
 % Re-snapshot the operating point with the baroreflex disabled, since
 % the steady state shifts when the loop is opened.
 opPointOpen = findop(mdl, 3600);
-fprintf('Linearizing open-loop v2 (baroreflex disabled) ...\n');
+fprintf('Linearizing open-loop (baroreflex disabled) ...\n');
 sys_open = linearize(mdl, opPointOpen, io);
 
 clear cleaner   % restore the original gain immediately
@@ -70,7 +70,7 @@ p_open   = pole(sys_open);
 p_closed = pole(sys_closed);
 
 fprintf('\n=========================================================\n');
-fprintf('  V2 LINEARIZATION SUMMARY\n');
+fprintf('  LINEARIZATION SUMMARY (closed-loop steady state)\n');
 fprintf('=========================================================\n');
 fprintf('  Open-loop  DC gain  : %+.3f bpm/mg\n', dcgain(sys_open));
 fprintf('  Closed-loop DC gain : %+.3f bpm/mg\n', dcgain(sys_closed));
@@ -81,7 +81,7 @@ fprintf('  Closed-loop stable  : %s\n', string(all_stable));
 fprintf('=========================================================\n\n');
 
 %% ── Bode plot ────────────────────────────────────────────────────────
-fig = figure('Name', 'v2 baroreflex: open vs closed loop', ...
+fig = figure('Name', 'Baroreflex: open vs closed loop', ...
     'Color', 'w', 'Position', [140 140 820 540]);
 bode(sys_open, 'r--', sys_closed, 'b-');
 legend({'Open loop (baroreflex off)', 'Closed loop (baroreflex on)'}, ...

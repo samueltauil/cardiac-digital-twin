@@ -1,7 +1,7 @@
 %% run_patient_cohort.m
-% Phase 2 prompt 11: Virtual patient cohort.
+% Virtual patient cohort.
 %
-% Runs the v2 cardiac digital twin over a Monte Carlo cohort of synthetic
+% Runs the cardiac digital twin over a Monte Carlo cohort of synthetic
 % patients. Each patient has independently sampled PK and physiology
 % parameters drawn from population-style distributions. The script
 % reports the steady-state distribution of HR, CO, and MAP at the
@@ -24,9 +24,9 @@ repoRoot = fileparts(fileparts(mfilename('fullpath')));
 addpath(fullfile(repoRoot, 'model'));
 addpath(fullfile(repoRoot, 'analysis'));
 
-run(fullfile(repoRoot, 'model', 'cardiac_params_v2.m'));
+run(fullfile(repoRoot, 'model', 'cardiac_params.m'));
 
-mdl     = 'CardiacDigitalTwin_v2';
+mdl     = 'CardiacDigitalTwin';
 mdlFile = fullfile(repoRoot, 'model', [mdl '.slx']);
 if ~bdIsLoaded(mdl)
     load_system(mdlFile);
@@ -37,7 +37,7 @@ nPatients = 100;            % cohort size
 doses     = [50 60];        % mg
 rng(42);                    % reproducible cohort
 
-% Nominal values come from the base workspace (loaded by cardiac_params_v2).
+% Nominal values come from the base workspace (loaded by cardiac_params).
 nominal.baseline_hr  = baseline_heart_rate;
 nominal.beta_sens    = beta_hr_sensitivity;
 nominal.pk_tau       = pk_time_constant;

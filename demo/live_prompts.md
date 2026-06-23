@@ -40,8 +40,8 @@ and explain how it flows through the model to affect heart rate.
 
 **Expected MCP tools:** `model_query_params`, `model_resolve_params`  
 **Expected response:** `beta_blocker_dose_mg = 50 mg`; explanation that the dose feeds  
-the DrugPK transfer function, which produces plasma concentration, which reduces HR  
-via `beta_hr_sensitivity = 0.24 bpm/mg`.
+the `BetaBlockerPK` first-order transfer function, which produces plasma concentration,  
+which reduces HR through the `HillEquation` block (Emax = 18 bpm, EC50 = 35 mg, Hill n = 1.5).
 
 **Narrative bridge:**  
 *"In seconds, Copilot traced the causal pathway from drug dose to heart rate —  
@@ -81,14 +81,16 @@ and mean arterial pressure. Present the results in a clear table.
 
 | Metric | Baseline (50 mg) | Modified (60 mg) | Change |
 |--------|-----------------|-----------------|--------|
-| Heart Rate | ~63 bpm | ~60.6 bpm | −3.8% |
-| Cardiac Output | ~4.41 L/min | ~4.24 L/min | −3.9% |
-| Mean Art. Pressure | ~79.4 mmHg | ~76.3 mmHg | −3.9% |
+| Heart Rate | ~67.4 bpm | ~66.6 bpm | -1.3% |
+| Cardiac Output | ~4.72 L/min | ~4.66 L/min | -1.3% |
+| Mean Art. Pressure | ~84.9 mmHg | ~83.9 mmHg | -1.3% |
 
 **Narrative bridge:**  
-*"The simulation ran. We can see the model-predicted physiological response  
-to the dose change — all three haemodynamic metrics moved in the expected  
-direction, confirming the therapeutic intent."*
+*"The simulation ran. The marginal drop is small (about 0.9 bpm) because
+the Hill receptor binding is saturating near Emax and the baroreflex is
+partially compensating. All three haemodynamic metrics moved in the
+expected direction, but a clinician would note that pushing the dose
+further will give diminishing returns."*
 
 ---
 
@@ -103,11 +105,11 @@ What would you flag for the cardiologist's attention?
 
 **Expected MCP tools:** None (reasoning from prior context)  
 **Expected response:** Summary noting:
-- HR reduction of ~2.4 bpm is modest but directionally correct for rate control
-- MAP reduction of ~3 mmHg contributes to antihypertensive goal
-- HR at ~61 bpm is within safe range (not approaching bradycardia threshold of <50 bpm)
-- Cardiac output remains adequate (~4.24 L/min > clinical concern threshold of ~3 L/min)
-- Flag: monitor for symptomatic bradycardia; re-evaluate at next clinical visit
+- HR reduction of ~0.9 bpm is modest. The closed-loop baroreflex absorbs most of the drug's direct effect, and the Hill curve is past EC50 so each extra milligram gives diminishing returns
+- MAP reduction of ~1 mmHg contributes a small step toward the antihypertensive goal
+- HR at ~66.6 bpm is comfortably above the bradycardia threshold (<50 bpm)
+- Cardiac output remains adequate (~4.66 L/min, well above the ~3 L/min concern threshold)
+- Flag: dose escalation past EC50 (~35 mg-equivalent concentration) gives shrinking marginal benefit; consider switching agents or adding a second-line therapy before further dose increases
 
 **Narrative bridge:**  
 *"This is where it gets powerful. Copilot doesn't just run the simulation —  
@@ -121,8 +123,10 @@ an immediate, evidence-based summary ready for the patient record."*
 ```
 Write a Gherkin-style test scenario that verifies the cardiac model
 correctly shows a reduction in heart rate when beta-blocker dose is
-increased from 50 mg to 60 mg. The test should check that
-steady-state heart rate decreases by at least 2 bpm.
+increased from 50 mg to 60 mg. The test should drive the
+HeartRateModel subsystem in open-loop (BaroreflexIn held at zero) and
+check that the Hill saturated response still produces a measurable
+HR drop of at least 0.5 bpm.
 ```
 
 **Expected MCP tools:** `model_test` (Gherkin test generation)  
@@ -131,12 +135,13 @@ steady-state heart rate decreases by at least 2 bpm.
 ```gherkin
 Feature: Beta-blocker dose-response validation
 
-  Scenario: Increased metoprolol dose reduces heart rate
-    Given the cardiac model is initialized with beta_blocker_dose_mg = 50
-    And the simulation reaches steady state
-    When beta_blocker_dose_mg is increased to 60
-    And the simulation is re-run to steady state
-    Then the steady-state heart rate should decrease by at least 2 bpm
+  Scenario: Increased metoprolol dose reduces heart rate (open loop)
+    Given the HeartRateModel is driven with Concentration = const(50)
+    And BaroreflexIn is held at const(0)
+    When the subsystem reaches steady state
+    Then the steady-state heart rate should be near 63.6 bpm
+    When Concentration is increased to const(60)
+    Then the steady-state heart rate should drop by at least 0.5 bpm
     And the new steady-state heart rate should remain above 40 bpm
 ```
 
@@ -233,115 +238,115 @@ respond to the dose change?"*
 
 ---
 
-## Phase 2 — Optional deep dive (Prompts 9–11)
+## Optional deep dive — Prompts 9–11
 
 The first 8 prompts are the polished live demo. Prompts 9 through 11 are an
 **optional deep dive** for an engineering audience that wants to see Copilot
-handle structural refactors, feedback-loop wiring, and Monte Carlo workflows.
-They use a second model, `CardiacDigitalTwin_v2.slx`, kept alongside v1 so the
-linear demo stays intact.
+explain the embedded Hill nonlinearity, perform a closed-loop linearization
+stability check, and run a Monte Carlo virtual-patient cohort.
 
 Plan an extra **5 to 10 minutes** total if you run any of these, plus about
 **3 to 4 minutes of wall-clock** for the cohort simulation in Prompt 11.
 
 ---
 
-## Prompt 9 — Nonlinear receptor binding (Hill/Emax)
+## Prompt 9 — Explain the Hill/Emax receptor binding
 
 ```
-The v1 HeartRateModel uses a linear gain (beta_hr_sensitivity) to relate
-plasma concentration to heart-rate drop. That's not how real receptor
-binding works — it saturates. Build a v2 model called CardiacDigitalTwin_v2
-that replaces the linear gain with a Hill/Emax expression:
-
-  DrugEffect(C) = emax_bpm * C^hill_n / (ec50_mg^hill_n + C^hill_n)
-
-with emax_bpm=18, ec50_mg=35, hill_n=1.5. Save the new model and run a
-50 mg vs 60 mg comparison. Show me how the marginal HR drop changes.
+Walk me through the HeartRateModel subsystem. It has a Fcn block called
+HillEquation; explain what equation that block evaluates, what each
+parameter means clinically, and what the drug effect curve looks like
+across the 0 to 200 mg concentration range. Then show me the marginal
+effect of going from 50 to 60 mg and explain why it's smaller than what
+a linear gain would predict.
 ```
 
-**Expected MCP tools:** `model_read`, `model_edit`, `evaluate_matlab_code`
-**Expected output:** A new `model/CardiacDigitalTwin_v2.slx`, a v2 params file,
-and a comparison showing the marginal HR drop at +20% dose shrinks from
-about −2.4 bpm (v1 linear) to about −0.9 bpm (v2 Hill saturation).
+**Expected MCP tools:** `model_read` on `HeartRateModel/HillEquation`,
+`model_resolve_params` on `emax_bpm` / `ec50_mg` / `hill_n`,
+`evaluate_matlab_code` for the curve plot.
+**Expected output:** Copilot identifies the Hill expression
+`emax_bpm*u^hill_n / (ec50_mg^hill_n + u^hill_n)`, explains
+Emax = 18 bpm as the receptor-saturation ceiling, EC50 = 35 mg as the
+half-maximal concentration, and Hill n = 1.5 as cooperativity. Computes
+50→60 mg marginal drop of about 1.1 bpm (open loop) vs the ~2.4 bpm a
+linear gain would predict, and produces a dose-response curve plot.
 
 **Narrative bridge:**
-*"In real clinical pharmacology, doubling a dose almost never doubles the
-effect. Copilot just replaced a single Gain block with a Hill equation and
-the model immediately shows the saturation. That's the clinical reasoning
-the cardiologist needs to set the right dose."*
+*"In real clinical pharmacology, doubling a dose almost never doubles
+the effect. Copilot just read the model, identified the Hill block, and
+explained the saturation in clinical terms — without me writing a single
+line of code. That's the kind of model literacy that takes a new engineer
+weeks to develop."*
 
 ---
 
-## Prompt 10 — Close the cardiovascular loop with a baroreflex
+## Prompt 10 — Closed-loop linearization and stability margins
 
 ```
-Now close the cardiovascular loop. Add a BaroreflexController subsystem
-to CardiacDigitalTwin_v2 that takes MAP as input and outputs an HR
-correction equal to baroreflex_gain * (map_setpoint_mmHg - MAP), filtered
-through a first-order lag with time constant baroreflex_tau. Route that
-correction back as a second input to HeartRateModel.
-
-Then linearize the closed loop around steady state and confirm it's
-stable. Report the closed-loop poles and the change in DC gain compared
-to the open-loop case.
+The model has a baroreflex feedback loop from MAP back to HR. I want
+to confirm the closed loop is stable and quantify how much the loop
+attenuates the dose-to-HR response. Run a linearization at the 60 mg
+steady-state operating point with the baroreflex active, and again
+with the baroreflex gain set to zero. Report the closed-loop poles,
+the DC gain difference, and the bandwidth shift. Show a Bode plot
+comparing the two.
 ```
 
-**Expected MCP tools:** `model_edit` (multiple subsystem + wiring ops),
-`evaluate_matlab_code` (linearize + analysis), `check_matlab_code`
-**Expected output:** New `BaroreflexController` subsystem, closed feedback
-loop wired in, `analysis/linearize_baroreflex.m` run. Reports DC gain
-drops from −0.152 to −0.111 bpm/mg (about 27% reduction) and adds a
-slow stable pole at −0.023 rad/s. Closed loop is stable.
+**Expected MCP tools:** `evaluate_matlab_code` running
+`analysis/linearize_baroreflex.m` (Simulink Control Design's
+`linearize` + `findop` for the steady-state op point).
+**Expected output:** Open-loop DC gain ~-0.152 bpm/mg, closed-loop
+~-0.111 bpm/mg (about 27% attenuation), closed-loop adds a slow
+stable pole at ~-0.023 rad/s, no instability. Bode plot showing
+the closed loop rolls off earlier.
 
 **Narrative bridge:**
 *"Real cardiovascular systems aren't open loops. When the drug lowers
 blood pressure, the baroreflex senses it and pushes heart rate back up.
-Copilot just closed that loop and verified the closed system is still
-stable using linearization — that's a normal control-engineering check
-on what was a pharmacology problem ten seconds ago."*
+Copilot just linearized the closed loop, confirmed it's stable, and
+quantified the gain reduction — a normal control-engineering check on
+what was a pharmacology problem ten seconds ago."*
 
 ---
 
 ## Prompt 11 — Virtual patient cohort with PRCC sensitivity
 
 ```
-A nominal patient is a starting point, not a population. Write a Monte
-Carlo cohort wrapper that samples 100 virtual patients with log-normal
-PK and Hill parameters and normal physiology parameters around the
-nominal values. Run each patient at both 50 mg and 60 mg using parsim
-(or sim if Parallel Computing Toolbox isn't available). Then compute a
-PRCC sensitivity tornado against HR at 60 mg and tell me which
-parameters dominate the response.
+A nominal patient is a starting point, not a population. Run the
+Monte Carlo cohort wrapper in analysis/run_patient_cohort.m. It
+samples 100 virtual patients with log-normal PK and Hill parameters
+and normal physiology parameters around the nominal values, then
+runs each patient at both 50 mg and 60 mg using parsim. Then run
+analysis/sensitivity_tornado.m to compute the PRCC sensitivity tornado
+against HR at 60 mg and tell me which parameters dominate.
 ```
 
 **Expected MCP tools:** `evaluate_matlab_code` (parsim cohort + PRCC),
-`check_matlab_code` (validate generated scripts)
-**Expected output:** `analysis/run_patient_cohort.m` and
-`analysis/sensitivity_tornado.m` run. Cohort summary shows ~9 bpm
-standard deviation around the nominal HR mean. Tornado ranks Baseline HR
-(PRCC +0.96) as the dominant driver, followed by SVR (−0.77) and stroke
-volume (−0.67). Drug-specific parameters (Emax, EC50) rank lower because
-the cohort spread in baseline physiology dominates the dose response.
+`check_matlab_code` (validate scripts before running)
+**Expected output:** Cohort summary shows ~9 bpm standard deviation
+around the nominal HR mean. Tornado ranks Baseline HR (PRCC +0.96) as
+the dominant driver, followed by SVR (−0.77) and stroke volume (−0.67).
+Drug-specific parameters (Emax, EC50) rank lower because the cohort
+spread in baseline physiology dominates the dose response.
 
 **Narrative bridge:**
-*"And here's the population view. The interesting story isn't the mean —
-it's the spread. About a quarter of these virtual patients respond much
+*"And here's the population view. The interesting story isn't the mean.
+It's the spread. About a quarter of these virtual patients respond much
 less than the nominal patient, and a few respond much more. The PRCC
 tornado tells the clinician where their per-patient calibration matters
 most: baseline heart rate and vascular resistance, not the drug dose."*
 
 ---
 
-## Phase 2 Timing Guide
+## Deep-dive Timing Guide
 
 | Prompt | Expected Duration | Cumulative |
 |--------|------------------:|-----------:|
-| 9      | 60–90 s (model refactor) | ~1.5 min |
-| 10     | 90–120 s (subsystem + linearization) | ~3.5 min |
-| 11     | 90–180 s (cohort sim runs in background) | ~5–6 min |
+| 9      | 45-75 s (model read + curve plot)           | ~1 min   |
+| 10     | 60-90 s (linearize + Bode)                  | ~2.5 min |
+| 11     | 90-180 s (cohort sim runs in background)    | ~5 min   |
 
-**Total Phase 2 deep dive: 5 to 10 minutes** depending on cohort wall-clock.
-Phase 2 is end-to-end about 3 to 4 minutes of MATLAB simulation time on a
-machine without Parallel Computing Toolbox; with parsim and a 4-worker pool
-it drops to under 60 s.
+**Total deep dive: 4 to 6 minutes** depending on cohort wall-clock.
+End-to-end the cohort uses about 3 to 4 minutes of MATLAB simulation
+time on a machine without Parallel Computing Toolbox; with parsim and
+a 4-worker pool it drops to under 60 s.

@@ -35,16 +35,16 @@ All three are marked `draft` and `auto-generated` in their keyword set. They are
 !!! abstract "EARS pattern: Event-driven"
     **When** the prescribed beta-blocker dose (`beta_blocker_dose_mg`) increases
     from 50 mg to 60 mg, the cardiac digital twin **shall** reduce the
-    steady-state heart rate by at least 2 bpm.
+    steady-state heart rate by at least 0.5 bpm.
 
-**Rationale.** The digital twin produces a clinically directionally-correct chronotropic response to dose escalation, supporting its use as a decision-support tool for cardiologist titration review.
+**Rationale.** The digital twin produces a clinically directionally-correct chronotropic response to dose escalation, supporting its use as a decision-support tool for cardiologist titration review. The threshold is deliberately modest (0.5 bpm): because the Hill curve is already past its EC50 at 50 mg, the marginal effect of a further 20 % dose increase is small — a closed-loop drop of about 0.85 bpm — and the requirement must reflect that saturating reality rather than a linear extrapolation.
 
 **Trace links** (`Implement`):
 
 - `CardiacDigitalTwin:2` (`BetaBlockerPK`). PK stage that produces the steady-state plasma concentration.
 - `CardiacDigitalTwin:3` (`HeartRateModel`). Chronotropic stage that converts concentration into HR reduction.
 
-**Verification.** [`validation/beta_blocker_dose_response.feature`](https://github.com/samueltauil/cardiac-digital-twin/blob/main/validation/beta_blocker_dose_response.feature), passing (5 of 5 assessments).
+**Verification.** [`validation/beta_blocker_dose_response.feature`](https://github.com/samueltauil/cardiac-digital-twin/blob/main/validation/beta_blocker_dose_response.feature), passing (2 open-loop Hill scenarios, 5 of 5 assertions).
 
 **Why event-driven EARS?** The requirement is *conditional on an event* (a dose change). Ubiquitous wording (*"the system shall reduce HR…"*) would read as if it were always reducing HR; event-driven framing makes the trigger explicit.
 
@@ -53,12 +53,13 @@ All three are marked `draft` and `auto-generated` in their keyword set. They are
 ## REQ_CDT_002. Performance: HR formula
 
 !!! abstract "EARS pattern: Ubiquitous"
-    At steady state, the cardiac digital twin **shall** compute heart rate as
-    `baseline_heart_rate` (75 bpm) minus `beta_hr_sensitivity` (0.24 bpm/mg)
-    times `beta_blocker_dose_mg`, within \(\pm 0.5\) bpm tolerance, for any
-    dose in the range `[0 mg, 145 mg]`.
+    At steady state, the cardiac digital twin **shall** compute the drug-induced
+    heart-rate reduction as a Hill/Emax function of plasma concentration —
+    `emax_bpm` (18 bpm) times `C^hill_n` over `ec50_mg^hill_n + C^hill_n`, with
+    `hill_n` = 1.5 and `ec50_mg` = 35 mg — within \(\pm 0.5\) bpm tolerance, for
+    any dose in the range `[0 mg, 145 mg]`.
 
-**Rationale.** Pins the model's chronotropic gain to a calibrated, clinically plausible response (about 12 bpm reduction at 50 mg metoprolol succinate) and bounds the validity domain of the linear approximation.
+**Rationale.** Pins the model's chronotropic response to a calibrated, clinically plausible saturating curve. The Hill form captures receptor-binding saturation, so the marginal effect of dose escalation shrinks as the dose rises — the central behaviour the demo demonstrates.
 
 **Trace links:**
 
@@ -66,7 +67,7 @@ All three are marked `draft` and `auto-generated` in their keyword set. They are
 
 **Why \(\pm 0.5\) bpm?** The simulation's first-order PK takes about 5\(\tau\) (9000 s) to settle to within 0.7 % of the asymptote. The 0.5 bpm tolerance covers both solver settling and any small numerical drift, while still being tight enough to detect a real calibration error.
 
-**Why the [0, 145] mg ceiling?** The HR saturation clamp activates at \(75 - 0.24 \cdot 145.8 = 40\) bpm. Beyond that dose the formula is no longer representative. The requirement explicitly says so.
+**Why the [0, 145] mg ceiling?** The HR saturation clamp (floor 40 bpm) marks the edge of the model's validity domain. At therapeutic doses the Hill drug effect alone removes at most ~15 bpm, so the clamp never engages; the bound documents the dose beyond which the model is no longer claimed representative.
 
 **Why ubiquitous EARS?** This is an always-true property of the model, not a response to a trigger. Ubiquitous framing communicates "invariant" better than event-driven framing would.
 
@@ -89,26 +90,20 @@ All three are marked `draft` and `auto-generated` in their keyword set. They are
 
 **Why unwanted-behaviour EARS?** Safety constraints map naturally to *"if condition, then response"* phrasing. It is the canonical pattern for expressing a guard.
 
-### The verification gap
+### How the saturating model satisfies it
 
-REQ_CDT_003 is intentionally a **failing requirement at the boundary** in the current model:
+REQ_CDT_003 holds across the entire therapeutic range, and the Hill saturation is what makes that true. Because the drug effect plateaus near `emax_bpm`, heart rate never collapses the way a constant-gain model would:
 
 \[
 \begin{aligned}
-\text{HR}_{100\text{mg}} &= 75 - 0.24 \cdot 100 = 51\ \text{bpm} \\
-\text{CO}_{100\text{mg}} &= 51 \cdot 70 / 1000 = 3.57\ \text{L/min}
+\text{HR}_{100\text{mg}}^{\text{open-loop}} &= 75 - 18\cdot\frac{100^{1.5}}{35^{1.5}+100^{1.5}} \approx 60.1\ \text{bpm} \\
+\text{CO}_{100\text{mg}}^{\text{open-loop}} &= 60.1 \cdot 70 / 1000 \approx 4.21\ \text{L/min}
 \end{aligned}
 \]
 
-3.57 is below 4.0, so the safety floor is **breached** at 100 mg under the current `stroke_volume_mL = 70` assumption.
+4.21 L/min is above the 4.0 floor even with the baroreflex switched off, and the closed-loop value is higher still (~4.6 L/min) because the reflex restores part of the heart-rate drop. A naive linear gain would have pushed CO below 4.0 well inside the therapeutic range; the receptor-saturation physics is precisely what supplies the safety margin.
 
-This is the kind of finding the cardiologist review must address:
-
-- Tighten the dose-range bound in the requirement (for example to 80 mg).
-- Refine the SV model so that compensatory mechanisms preserve CO above the safety floor.
-- Accept the finding and document it as a known limitation.
-
-Either way, the requirement *did its job*: it identified an unsafe operating region before the digital twin was used for any clinical recommendation. That is the whole point of having safety requirements traced to verification.
+This is the kind of property a cardiologist review can lean on: the safety floor is not an arbitrary guard bolted on top, it falls out of the pharmacodynamics. The requirement is traced to verification so the margin is checked on every run rather than assumed.
 
 ---
 
@@ -139,11 +134,11 @@ slreq.open('CardiacDigitalTwin_Requirements')
 
 A boilerplate template generator would produce phrasing like *"the system shall not exceed 180 bpm"*. Copilot's draft is structurally different.
 
-Numeric values are typed with their workspace variables. Instead of bare numbers, requirements reference *`beta_hr_sensitivity` (0.24 bpm/mg)*. That makes the requirement legible *and* makes it survive a future re-calibration without becoming stale.
+Numeric values are typed with their workspace variables. Instead of bare numbers, requirements reference *`emax_bpm` (18 bpm)* and *`ec50_mg` (35 mg)*. That makes the requirement legible *and* makes it survive a future re-calibration without becoming stale.
 
 Validity domains are explicit. REQ_CDT_002 bounds the dose range to [0, 145] mg, derived from where the saturation clamp activates. A template wouldn't compute that derivation.
 
-Known limitations are surfaced, not hidden. REQ_CDT_003 calls out the boundary failure at 100 mg in its own Description. Most auto-generated requirements try to look like they pass; this one tells you exactly where it does not.
+Physical margins are traced to their cause, not asserted. REQ_CDT_003's Description explains *why* cardiac output stays above 4.0 L/min across the therapeutic range — the Hill saturation plateaus the drug effect near `emax_bpm`, so CO bottoms out at ~4.21 L/min open-loop (higher closed-loop) rather than collapsing the way a constant-gain model would. The safety margin falls out of the pharmacodynamics instead of being asserted as a bare number.
 
 The result is a requirement set a human reviewer can engage with: challenge the bounds, refine the rationale, baseline the wording. Not a plausible-looking artifact that is actually empty.
 

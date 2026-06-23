@@ -42,11 +42,11 @@ Third, every step produces a durable engineering deliverable. Architecture summa
 
 **MCP tools called:** `model_overview`, `model_read`.
 
-**What Copilot returns:** the four-subsystem cascade (BetaBlockerPK, HeartRateModel, CardiacOutputModel, BloodPressureModel), described in terms of the physiological mechanism each one implements. Subsystem-by-subsystem input and output names are listed alongside the role each plays in the dose-to-MAP chain.
+**What Copilot returns:** the five-subsystem closed-loop model (BetaBlockerPK, HeartRateModel, CardiacOutputModel, BloodPressureModel, and the BaroreflexController that feeds MAP back into heart rate), described in terms of the physiological mechanism each one implements. Subsystem-by-subsystem input and output names are listed alongside the role each plays in the dose-to-MAP chain and the autonomic feedback loop.
 
 **Why it matters:** the cardiologist does not need to read Simulink to understand what the model does. Copilot translates block topology into physiology.
 
-![Copilot Chat answering Prompt 1: a Ran Model Overview tool call is shown, followed by a textual summary of the four-stage cascade and a subsystems table](images/demo-copilot-first-prompt.png)
+![Copilot Chat answering Prompt 1: a Ran Model Overview tool call is shown, followed by a textual summary of the closed-loop cascade and a subsystems table](images/demo-copilot-first-prompt.png)
 
 ---
 
@@ -56,7 +56,7 @@ Third, every step produces a durable engineering deliverable. Architecture summa
 
 **MCP tools called:** `model_query_params`, `model_resolve_params`.
 
-**What Copilot returns:** `beta_blocker_dose_mg = 50 mg`, defined in `model/cardiac_params.m`, bound to the `BetaBlockerDose` Constant block at the model root. A causal flow diagram traces the dose through the PK transfer function (\(\tau = 1800\) s) into the chronotropic gain (\(k_\beta = 0.24\) bpm/mg) that subtracts from the 75 bpm baseline.
+**What Copilot returns:** `beta_blocker_dose_mg = 50 mg`, defined in `model/cardiac_params.m`, bound to the `BetaBlockerDose` Constant block at the model root. A causal flow diagram traces the dose through the PK transfer function (\(\tau = 1800\) s) into the `HillEquation` block (\(E_{\max} = 18\) bpm, \(EC_{50} = 35\) mg, \(n = 1.5\)) that subtracts a saturating drug effect from the 75 bpm baseline.
 
 **Why it matters:** parameter discovery in a Simulink model is normally a click exercise across multiple block dialogs. Copilot reduces it to one prompt and returns a structured explanation aligned with the question.
 
@@ -84,11 +84,11 @@ Third, every step produces a durable engineering deliverable. Architecture summa
 
 | Output | 50 mg | 60 mg | Δ | Δ % |
 |---|---:|---:|---:|---:|
-| HR (bpm) | 63.10 | 60.73 | -2.38 | -3.77 % |
-| CO (L/min) | 4.417 | 4.251 | -0.167 | -3.77 % |
-| MAP (mmHg) | 79.51 | 76.51 | -3.00 | -3.77 % |
+| HR (bpm) | 67.40 | 66.55 | -0.85 | -1.26 % |
+| CO (L/min) | 4.718 | 4.659 | -0.059 | -1.26 % |
+| MAP (mmHg) | 84.93 | 83.86 | -1.07 | -1.26 % |
 
-**Why it matters:** Copilot does not only run the simulation. It picks the right StopTime to capture steady state, computes the comparison, and validates the result against analytical expectations (\(75 - 0.24 \cdot D\) for HR). The narrative output includes that analytical check.
+**Why it matters:** Copilot does not only run the simulation. It picks the right StopTime to capture steady state, computes the comparison, and explains why the marginal change is small: the Hill curve is near saturation at these doses and the baroreflex partially restores heart rate. The narrative output includes that physiological check.
 
 ---
 
@@ -106,32 +106,34 @@ Third, every step produces a durable engineering deliverable. Architecture summa
 
 ## Prompt 6. Generate the Gherkin verification test
 
-> *"Write a Gherkin-style test scenario that verifies the cardiac model correctly shows a reduction in heart rate when beta-blocker dose is increased from 50 mg to 60 mg. The test should check that steady-state heart rate decreases by at least 2 bpm."*
+> *"Write a Gherkin-style test scenario that verifies the cardiac model correctly shows a reduction in heart rate when beta-blocker dose is increased from 50 mg to 60 mg. The test should check that steady-state heart rate decreases by at least 0.5 bpm."*
 
 **MCP tools called:** `model_test` with `draft_mode=true`.
 
-**What Copilot produces:** [`validation/beta_blocker_dose_response.feature`](https://github.com/samueltauil/cardiac-digital-twin/blob/main/validation/beta_blocker_dose_response.feature), a Gherkin file targeting the `HeartRateModel` subsystem with two scenarios.
+**What Copilot produces:** [`validation/beta_blocker_dose_response.feature`](https://github.com/samueltauil/cardiac-digital-twin/blob/main/validation/beta_blocker_dose_response.feature), a Gherkin file targeting the `HeartRateModel` subsystem with two scenarios. The subsystem is driven open-loop by holding `BaroreflexIn` at `const(0)`, which isolates the drug effect and gives tight, reproducible bounds.
 
 ```gherkin
-Scenario: Baseline 50 mg dose holds heart rate near 63 bpm
+Scenario: Baseline 50 mg dose holds heart rate near 63.6 bpm
   Given inputs
     * Concentration = const(50)
+    * BaroreflexIn = const(0)
   When simulate for 1s in Normal mode
   Then outputs
-    * BaselineUpperBound: HR <= 63.1
-    * BaselineLowerBound: HR >= 62.9
+    * BaselineUpperBound: HR <= 63.9
+    * BaselineLowerBound: HR >= 63.4
 
-Scenario: Increased 60 mg dose drops heart rate by at least 2 bpm
+Scenario: Increased 60 mg dose drops heart rate by at least 0.5 bpm
   Given inputs
     * Concentration = const(60)
+    * BaroreflexIn = const(0)
   When simulate for 1s in Normal mode
   Then outputs
-    * IncreasedDoseUpperBound: HR <= 60.7
-    * IncreasedDoseLowerBound: HR >= 60.5
+    * IncreasedDoseUpperBound: HR <= 62.8
+    * IncreasedDoseLowerBound: HR >= 62.3
     * NotBelowClamp: HR >= 40
 ```
 
-Both scenarios pass in about 3 s in draft mode. The minimum-2-bpm-decrease requirement is enforced *across* the two scenarios: 50 mg lower bound (62.9) minus 60 mg upper bound (60.7) equals a 2.2 bpm guaranteed drop.
+Both scenarios pass in about 3 s in draft mode. The minimum-0.5-bpm-decrease requirement is enforced *across* the two scenarios: 50 mg lower bound (63.4) minus 60 mg upper bound (62.8) equals a 0.6 bpm guaranteed drop.
 
 **Why it matters:** the test is more than syntactically correct. It is bound to the exact analytical values the simulation produced, with bounds tight enough to *guarantee the requirement holds*. Copilot picked the bounds with that guarantee in mind.
 
@@ -147,11 +149,11 @@ Both scenarios pass in about 3 s in draft mode. The minimum-2-bpm-decrease requi
 
 | Id | Pattern | Summary |
 |---|---|---|
-| REQ_CDT_001 | Event-driven | When dose increases from 50 mg to 60 mg, HR shall decrease at least 2 bpm. |
-| REQ_CDT_002 | Ubiquitous | HR shall equal \(75 - 0.24 \cdot D\), within \(\pm 0.5\) bpm, for dose in [0, 145] mg. |
+| REQ_CDT_001 | Event-driven | When dose increases from 50 mg to 60 mg, HR shall decrease at least 0.5 bpm. |
+| REQ_CDT_002 | Ubiquitous | Closed-loop steady-state HR shall follow the Hill/Emax dose-response (\(E_{\max}=18\), \(EC_{50}=35\), \(n=1.5\)) with the baroreflex active, within \(\pm 0.5\) bpm, for dose in [0, 145] mg. |
 | REQ_CDT_003 | Unwanted-behaviour | If dose is in [0, 100] mg, CO shall remain at or above 4.0 L/min. |
 
-Each requirement carries its rationale, keywords (`draft`, `auto-generated`), and at least one traceability link. REQ_CDT_003 is explicitly flagged as having a **boundary case that fails** (at 100 mg the model predicts CO of about 3.57 L/min). This is the kind of finding a human reviewer needs to see *and* fix before baselining.
+Each requirement carries its rationale, keywords (`draft`, `auto-generated`), and at least one traceability link. REQ_CDT_003 holds comfortably across the therapeutic range: because the Hill curve saturates and the baroreflex restores rate, CO stays near 4.6 L/min even at 100 mg, so the 4.0 L/min floor is not threatened. A human reviewer would still confirm the boundary before baselining.
 
 **Why it matters:** Copilot turns the validated behaviour into a reviewable engineering artifact. The traceability is forward (each requirement links to the model element that implements it) and backward (the rationale references the validation test that confirms it). When you open the `.slreqx` in MATLAB, it shows up in Requirements Toolbox just like any human-authored requirement set.
 

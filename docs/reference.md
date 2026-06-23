@@ -13,17 +13,22 @@ All parameters live in [`model/cardiac_params.m`](https://github.com/samueltauil
 | `beta_blocker_dose_mg` | 50 | mg | `BetaBlockerDose` Constant | The dose the demo changes in Prompt 3. |
 | `pk_time_constant` | 1800 | s | `BetaBlockerPK / PKTransferFcn` denominator | 30 min effective time constant. |
 | `baseline_heart_rate` | 75 | bpm | `HeartRateModel / BaselineHR` | Drug-free resting HR. |
-| `beta_hr_sensitivity` | 0.24 | bpm/mg | `HeartRateModel / BetaSensitivity` Gain | Chronotropic gain. |
+| `emax_bpm` | 18 | bpm | `HeartRateModel / HillEquation` Fcn | Maximum drug-induced HR reduction. |
+| `ec50_mg` | 35 | mg | `HeartRateModel / HillEquation` Fcn | Concentration for half-maximal effect. |
+| `hill_n` | 1.5 | — | `HeartRateModel / HillEquation` Fcn | Hill coefficient (binding cooperativity). |
 | `stroke_volume_mL` | 70 | mL/beat | `CardiacOutputModel / StrokeVolume` | Constant in this demo. |
 | `svr_mmHg_min_per_L` | 18 | mmHg·min/L | `BloodPressureModel / SVRGain` | Constant in this demo. |
+| `map_setpoint_mmHg` | 94 | mmHg | `BaroreflexController` set-point | Target MAP the baroreflex defends. |
+| `baroreflex_gain` | 0.30 | bpm/mmHg | `BaroreflexController` Gain | Feedback gain from MAP error to HR. |
+| `baroreflex_tau` | 60 | s | `BaroreflexController` lag | First-order lag on the reflex. |
 
 Derived constants (printed at startup, not used by Simulink):
 
-| Quantity | Formula | Value at default dose |
+| Quantity | Description | Value at default dose |
 |---|---|---:|
-| `expected_HR_baseline_bpm` | \(\text{HR}_0 - k_\beta \cdot D\) | 63.0 bpm |
-| `expected_CO_baseline_Lmin` | \(\text{HR}_{ss} \cdot \text{SV} / 1000\) | 4.41 L/min |
-| `expected_MAP_baseline_mmHg` | \(\text{CO}_{ss} \cdot \text{SVR}\) | 79.4 mmHg |
+| `expected_HR_baseline_bpm` | Closed-loop steady-state HR | 67.4 bpm |
+| `expected_CO_baseline_Lmin` | \(\text{HR}_{ss} \cdot \text{SV} / 1000\) | 4.72 L/min |
+| `expected_MAP_baseline_mmHg` | \(\text{CO}_{ss} \cdot \text{SVR}\) | 84.9 mmHg |
 
 ---
 

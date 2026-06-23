@@ -48,8 +48,8 @@ The goal: bridge technical actions to business and clinical impact.
 
 ## After Prompt 4 — Simulation Results (20 seconds)
 
-> "Look at the results. Heart rate down 3.8%. Cardiac output down 3.9%.  
-> Mean arterial pressure down 3.9%. All three haemodynamic metrics moved in  
+> "Look at the results. Heart rate down 1.3%. Cardiac output down 1.3%.  
+> Mean arterial pressure down 1.3%. All three haemodynamic metrics moved in  
 > exactly the direction the physiology predicts — the model is behaving correctly,  
 > and the therapeutic intent is confirmed.
 >
@@ -63,9 +63,9 @@ The goal: bridge technical actions to business and clinical impact.
 
 > "This is where the real value is. Copilot isn't just running equations —  
 > it's interpreting results in clinical context. It identified that the heart  
-> rate at 60.6 bpm is within the therapeutic window, flagged that cardiac  
+> rate at 66.6 bpm is within the therapeutic window, flagged that cardiac  
 > output is adequate, and proactively raised the right clinical question:  
-> is the patient symptomatic?
+> is the marginal benefit of the dose increase worth it?
 >
 > That's not a lookup table. That's reasoning. And it's available to every  
 > clinician and engineer on the team, right in their development environment."

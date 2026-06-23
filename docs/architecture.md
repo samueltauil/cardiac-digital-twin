@@ -24,11 +24,13 @@
 | **Gain** block | Multiplies the input by a fixed number. We use it for the chronotropic gain and the unit conversion. |
 | **Sum** block | Adds or subtracts inputs (a `+−` Sum subtracts the second input from the first). |
 | **Saturation** block | Clips the input to a min/max range. We use it as a physiological safety floor on heart rate. |
-| **Transfer Fcn** block | A continuous-time filter expressed in [Laplace transform](https://en.wikipedia.org/wiki/Laplace_transform) notation `N(s)/D(s)`. Used here for the first-order pharmacokinetics. |
+| **Fcn** block | Evaluates an arbitrary scalar expression of its input. Used here for the nonlinear Hill/Emax drug-effect curve. |
+| **Transfer Fcn** block | A continuous-time filter expressed in [Laplace transform](https://en.wikipedia.org/wiki/Laplace_transform) notation `N(s)/D(s)`. Used here for the first-order pharmacokinetics and the baroreflex lag. |
 | **Scope** block | A graphical viewer that plots a signal versus time. Three of them show HR, CO, and MAP during simulation. |
 | **To Workspace** block | Writes a signal's time history to a MATLAB variable for later analysis. We use them to feed the dashboard and the validation tests. |
 | **Solver** | The numerical algorithm that integrates the model equations over time. This model uses `ode45`, a standard Runge-Kutta method for smooth nonlinear systems. |
-| **Cascade** | Several subsystems chained so each one's output feeds the next one's input, with no loops back. Also called *feed-forward*. |
+| **Cascade** | Several subsystems chained so each one's output feeds the next one's input. |
+| **Feedback loop** | A path that routes a downstream signal back to an upstream input. Here, mean arterial pressure feeds back into heart rate through the baroreflex. |
 
 ---
 
@@ -42,6 +44,7 @@ flowchart LR
         HR[HeartRateModel<br/>Subsystem]
         CO[CardiacOutputModel<br/>Subsystem]
         MAP[BloodPressureModel<br/>Subsystem]
+        BARO[BaroreflexController<br/>Subsystem]
         HRout[HR_out<br/>To Workspace]
         COout[CO_out<br/>To Workspace]
         MAPout[MAP_out<br/>To Workspace]
@@ -50,6 +53,8 @@ flowchart LR
         MAPscope[BloodPressureScope]
 
         D --> PK --> HR --> CO --> MAP
+        MAP --> BARO
+        BARO -->|HR correction| HR
         HR --> HRscope
         HR --> HRout
         CO --> COscope
@@ -59,17 +64,18 @@ flowchart LR
     end
 ```
 
-Four behavioural subsystems in a strict cascade. Three Scope blocks for watching the signals during simulation, and three `To Workspace` blocks for analysing them after the run. The model has no feedback paths: data only flows left to right, from drug dose to mean arterial pressure (the average blood pressure that drives blood through the body).
+Five behavioural subsystems: a four-stage forward cascade from drug dose to mean arterial pressure (the average blood pressure that drives blood through the body), plus a `BaroreflexController` that closes the loop by feeding an HR correction back into `HeartRateModel`. Three Scope blocks watch the signals during simulation, and three `To Workspace` blocks capture them for analysis after the run.
 
-![CardiacDigitalTwin model in the Simulink canvas: BetaBlockerDose feeding the four cascaded subsystems, with HR, CO, and MAP routed to scopes and To Workspace blocks](images/model-simulink-canvas.png)
+![CardiacDigitalTwin model in the Simulink canvas: BetaBlockerDose feeding the cascaded subsystems, with the BaroreflexController closing the loop and HR, CO, and MAP routed to scopes and To Workspace blocks](images/model-simulink-canvas.png)
 
 | Block ID | Block | Interface |
 |---|---|---|
 | blk_1 | `BetaBlockerDose` (Constant) | out: scalar dose value in mg |
 | blk_2 | `BetaBlockerPK` | in: `DoseIn` (mg). out: `ConcentrationOut` (plasma drug level) |
-| blk_3 | `HeartRateModel` | in: `ConcentrationIn`. out: `HeartRateOut` (bpm) |
+| blk_3 | `HeartRateModel` | in: `ConcentrationIn`, `BaroreflexIn` (bpm correction). out: `HeartRateOut` (bpm) |
 | blk_4 | `CardiacOutputModel` | in: `HeartRateIn`. out: `CardiacOutputOut` (L/min) |
 | blk_5 | `BloodPressureModel` | in: `CardiacOutputIn`. out: `MAPOut` (mmHg) |
+| blk_6 | `BaroreflexController` | in: `MAPIn` (mmHg). out: `HRCorrectionOut` (bpm) |
 
 !!! note "What `blk_N` means"
     Every block in Simulink has a stable internal ID like `blk_2`. The MCP tools
@@ -100,7 +106,7 @@ In plain words, after you take the metoprolol tablet, the level of the drug in y
 
 A few engineering details that matter for the demo.
 
-The **DC gain** (the ratio between input and output once everything has settled) is one. At steady state the plasma concentration *equals* the dose value. This is what lets the validation test drive the `HeartRateModel` subsystem directly with `const(50)` and `const(60)` and still represent the full-model comparison.
+The **DC gain** (the ratio between input and output once everything has settled) is one. At steady state the plasma concentration *equals* the dose value. This is what lets the validation test drive the `HeartRateModel` subsystem directly with `const(50)` and `const(60)` on `ConcentrationIn` (holding `BaroreflexIn` at `const(0)` to isolate the open-loop drug effect) and still represent the forward-path comparison.
 
 The **time constant** \(\tau = 1800\) s, equivalent to 30 minutes. The time constant tells you how fast the system responds. After one \(\tau\), the response has reached about 63 % of its final value. After 5\(\tau\) (9000 s, 2.5 hours), it is within 0.7 % of the final value. The simulation's default `StopTime` of 3600 s catches roughly 86 % of the asymptote (2 time constants); the full-validation runs extend to 9000 s.
 
@@ -110,23 +116,27 @@ The **half-life** is \(\tau \ln 2\), about 21 minutes. Metoprolol's clinical hal
 
 ```mermaid
 flowchart LR
-    ConcentrationIn --> Gain["× beta_hr_sensitivity<br/>(0.24 bpm/mg)"]
+    ConcentrationIn --> Hill["Fcn: HillEquation<br/>Emax·Cⁿ / (EC50ⁿ + Cⁿ)<br/>(18, 35, 1.5)"]
     Baseline["Constant<br/>baseline_heart_rate (75 bpm)"]
-    Gain --> Sum["Σ<br/>+/−"]
+    BaroreflexIn["BaroreflexIn<br/>(HR correction, bpm)"]
+    Hill --> Sum["Σ<br/>− drug + baro"]
     Baseline --> Sum
+    BaroreflexIn --> Sum
     Sum --> Sat["Saturation<br/>[40, 180] bpm"]
     Sat --> HeartRateOut
 ```
 
-Five blocks: Constant, Gain, Sum (`+−`), Saturation, plus the Inport and Outport that connect the subsystem to its neighbours.
+The subsystem combines a baseline rate, a nonlinear drug effect, and the baroreflex correction, then clamps the result: Constant, `Fcn` (the Hill curve), Sum, Saturation, plus the two Inports and one Outport that connect it to its neighbours.
 
 \[
-\text{HR}(t) = \mathrm{clamp}\!\left(\text{HR}_0 - k_\beta \cdot C(t),\ 40,\ 180\right)
+\text{HR}(t) = \mathrm{clamp}\!\left(\text{HR}_0 - E_{\max}\frac{C(t)^n}{EC_{50}^n + C(t)^n} + \Delta\text{HR}_\text{baro}(t),\ 40,\ 180\right)
 \]
 
-The clinical term **chronotropic** means "affecting heart rate". Beta-blockers reduce heart rate by occupying receptors on the heart muscle that would otherwise be stimulated by adrenaline. In the therapeutic dose range this effect is roughly linear: each additional milligram of dose lowers the resting heart rate by a small, predictable amount. A receptor-binding model would be more accurate but would obscure the cause-and-effect relationship that this demo is built to show.
+The clinical term **chronotropic** means "affecting heart rate". Beta-blockers reduce heart rate by occupying beta-1 receptors on the cardiac pacemaker cells that would otherwise be stimulated by adrenaline. That binding **saturates**: once most receptors are occupied, additional drug adds little further effect. The `HillEquation` Fcn block captures this with the standard Hill/Emax curve (\(E_{\max} = 18\) bpm ceiling, \(EC_{50} = 35\) mg half-maximal concentration, Hill coefficient \(n = 1.5\)). See [Advanced physiology](advanced-physiology.md) for the full treatment.
 
-The Saturation block sets a physiological floor and ceiling on the heart rate. It is a defensive guard, not an active part of normal operation: at the standard doses the clamp never engages. The lower clamp only activates if the dose exceeds 145 mg, which is outside the therapeutic range entirely.
+The second input, `BaroreflexIn`, carries the heart-rate correction from the `BaroreflexController` subsystem, closing the autonomic feedback loop. When MAP falls, the baroreflex adds a positive HR correction that partially restores rate.
+
+The Saturation block sets a physiological floor and ceiling on the heart rate. It is a defensive guard, not an active part of normal operation: at the standard doses the clamp never engages.
 
 ### CardiacOutputModel: a Fick-like product
 
@@ -166,16 +176,16 @@ SVR is held constant in this model. Beta-blockers have very little direct effect
 
 ## Why this structure (and not something else)
 
-The v1 model is intentionally pedagogical. The three biggest physiological gaps below are each addressed in the v2 model, documented in [Advanced physiology (Phase 2)](advanced-physiology.md):
+The model balances physiological realism against legibility for a live demo. It includes the two effects that matter most for a dose-change question — saturating receptor binding and the baroreflex — while leaving out complexity that would not change the steady-state answer. The deeper treatment is in [Advanced physiology](advanced-physiology.md).
 
-| Alternative considered for v1 | Why it was *not* chosen for v1 | v2 status |
-|---|---|---|
-| Receptor-binding PD model (a Hill or Emax curve, where the dose-response saturates at high doses) | Adds curve-fitting complexity and parameter ambiguity. The linear gain is good to within \(\pm 5\) % in the therapeutic dose range and stays auditable. | Implemented (Prompt 9) |
-| Closed-loop baroreflex (the body's automatic blood-pressure feedback that nudges HR and SVR when MAP changes) | More realistic, but doubles the model complexity and obscures the linear traceability the demo is built around. | Implemented (Prompt 10) |
-| Two-compartment PK (drug distributes into a peripheral tissue compartment as well as the blood) | Captures distribution kinetics that are not needed for a steady-state dose-change question. The one-compartment model gives the same steady state and the right transient *shape*. | Not implemented |
-| Stateflow control logic | Belongs in a closed-loop controller demo, not a plant model. | Not implemented |
+| Modelling choice | Rationale |
+|---|---|
+| Hill/Emax receptor-binding PD (dose-response saturates at high doses) | **Included.** Captures the diminishing returns that make the 50→60 mg marginal effect small and clinically realistic. |
+| Closed-loop baroreflex (the body's automatic blood-pressure feedback that nudges HR when MAP changes) | **Included.** Adds the autonomic feedback that keeps MAP from falling unrealistically far and attenuates the dose-to-HR gain. |
+| Two-compartment PK (drug distributes into a peripheral tissue compartment as well as the blood) | **Omitted.** Captures distribution kinetics that are not needed for a steady-state dose-change question. The one-compartment model gives the same steady state and the right transient *shape*. |
+| Stateflow control logic | **Omitted.** Belongs in a closed-loop controller demo, not a plant model. |
 
-v1 is *deliberately* a pedagogical plant: every parameter has units, a clinical reference, and a single role in one formula. That is what makes the Copilot workflow legible for the live demo. v2 keeps that traceability while adding the nonlinearity, feedback, and population variability needed for a more realistic pharmacological workbench.
+Every parameter has units, a clinical reference, and a clear role in one formula. That traceability is what makes the Copilot workflow legible for the live demo, even with the nonlinearity and feedback in place.
 
 ---
 
@@ -189,13 +199,14 @@ run('model/create_cardiac_model.m')
 
 That script does the following.
 
-1. Creates a fresh `CardiacDigitalTwin` system.
-2. Configures the solver (`ode45`, variable-step, `StopTime = 3600`). The solver is the numerical algorithm that integrates the model equations forward in time; variable-step means it picks its own time step to maintain accuracy.
-3. Adds the dose Constant block bound to `beta_blocker_dose_mg` (a workspace variable, so it can be changed from MATLAB without editing the model).
-4. Adds each subsystem with named Inport and Outport blocks.
-5. Wires the internals of every subsystem.
-6. Adds Scope and `To Workspace` blocks at the root.
-7. Saves the resulting `CardiacDigitalTwin.slx`.
+1. Loads the workspace parameters by running [`model/cardiac_params.m`](https://github.com/samueltauil/cardiac-digital-twin/blob/main/model/cardiac_params.m).
+2. Creates a fresh `CardiacDigitalTwin` system.
+3. Configures the solver (`ode45`, variable-step, `StopTime = 3600`). The solver is the numerical algorithm that integrates the model equations forward in time; variable-step means it picks its own time step to maintain accuracy.
+4. Adds the dose Constant block bound to `beta_blocker_dose_mg` (a workspace variable, so it can be changed from MATLAB without editing the model).
+5. Adds each subsystem with named Inport and Outport blocks, including the `BaroreflexController` and the second `BaroreflexIn` inport on `HeartRateModel`.
+6. Wires the internals of every subsystem and closes the baroreflex loop from `BloodPressureModel` back into `HeartRateModel`.
+7. Adds Scope and `To Workspace` blocks at the root.
+8. Saves the resulting `CardiacDigitalTwin.slx`.
 
 The source of truth for a Simulink model is far more reviewable when it is a script than when it is a binary `.slx`. Diffs become readable. Merges become tractable. The model's structure is documented *by being the script that builds it*. This is also the pattern that makes Copilot most useful: when the model is buildable from text, Copilot can reason about, edit, and regenerate it without ever needing to manipulate the binary directly.
 

@@ -18,7 +18,7 @@ By simulating the cardiovascular system computationally, researchers can explore
 
 This demo makes that idea concrete. It uses **GitHub Copilot** orchestrating the **Simulink Agentic Toolkit** via MCP to simulate a beta-blocker dosage change on a cardiac digital twin, entirely through natural-language prompts, with no manual code editing.
 
-**Detailed documentation:** see the [MkDocs site](docs/index.md) for full implementation details, formulas, architecture, validation methodology, and the Copilot workflow narrative.
+**Detailed documentation:** the full reference is published at **<https://samueltauil.github.io/cardiac-digital-twin/>** — implementation details, formulas, architecture, validation methodology, and the Copilot workflow narrative.
 
 ---
 
@@ -27,25 +27,24 @@ This demo makes that idea concrete. It uses **GitHub Copilot** orchestrating the
 > *"Simulate the effect of increasing a patient's beta-blocker (metoprolol) dosage by 20%."*
 
 In eight Copilot prompts, the AI assistant will:
-1. Describe the cardiac Simulink model architecture
+1. Describe the cardiac Simulink model architecture (PK, Hill HR, CO, BP, baroreflex)
 2. Locate and resolve the `beta_blocker_dose_mg` parameter
 3. Apply the +20 % change (50 mg to 60 mg)
-4. Re-run the simulation and compare the headline metrics
+4. Re-run the closed-loop simulation and compare the headline metrics
 5. Interpret the physiological impact in clinical context
 6. Generate a Gherkin verification test
 7. Draft formal engineering requirements from the simulation results
 8. Launch a real-time `uifigure` dashboard with overlaid run comparison
 
-Three optional **Phase 2 deep-dive prompts** show Copilot doing structural
-refactors, feedback-loop wiring, and population-level statistical analysis on
-an advanced v2 model:
+Three optional **deep-dive prompts** show Copilot doing structural analysis,
+control-theory checks, and population statistics on the consolidated model:
 
-9. Replace the linear HR gain with a Hill/Emax receptor-binding nonlinearity
-10. Close the cardiovascular loop with a baroreflex controller and linearize it
+9.  Explain the Hill/Emax receptor binding embedded in `HeartRateModel`
+10. Linearize the closed loop and verify baroreflex stability margins
 11. Run a 100-patient Monte Carlo cohort with a PRCC sensitivity tornado
 
 See [`docs/advanced-physiology.md`](docs/advanced-physiology.md) for the
-full Phase 2 narrative, and `demo/live_prompts.md` for the prompt text.
+advanced-analysis narrative, and `demo/live_prompts.md` for the prompt text.
 
 ---
 
@@ -53,9 +52,11 @@ full Phase 2 narrative, and `demo/live_prompts.md` for the prompt text.
 
 | Metric | Baseline (50 mg) | Modified (60 mg) | Change |
 |--------|:---:|:---:|:---:|
-| Heart rate | 63.0 bpm | 60.6 bpm | -3.8 % |
-| Cardiac output | 4.41 L/min | 4.24 L/min | -3.9 % |
-| Mean arterial pressure | 79.4 mmHg | 76.3 mmHg | -3.9 % |
+| Heart rate | 67.4 bpm | 66.6 bpm | -1.3 % |
+| Cardiac output | 4.72 L/min | 4.66 L/min | -1.3 % |
+| Mean arterial pressure | 84.9 mmHg | 83.9 mmHg | -1.3 % |
+
+The marginal HR drop is small because the Hill curve saturates near Emax and the baroreflex partially restores HR.
 
 ---
 
@@ -85,13 +86,10 @@ cardiac-digital-twin/
 |-- mkdocs.yml                      MkDocs site configuration
 |-- docs/                           MkDocs source (Material theme, MathJax, Mermaid)
 |-- model/
-|   |-- cardiac_params.m            Workspace parameters loaded before simulation
+|   |-- cardiac_params.m            Workspace parameters (PK, Hill/Emax, baroreflex, cohort distributions)
 |   |-- create_cardiac_model.m      Builds CardiacDigitalTwin.slx programmatically
-|   |-- run_simulation.m            Runs baseline + modified scenario, plots comparison
-|   |-- cardiac_params_v2.m         Phase 2 parameters (Hill/Emax + baroreflex)
-|   |-- create_cardiac_model_v2.m   Builds CardiacDigitalTwin_v2.slx programmatically
-|   `-- run_simulation_v2.m         Runs the advanced v2 baseline + modified comparison
-|-- analysis/                       Phase 2 analysis scripts (population, control)
+|   `-- run_simulation.m            Runs baseline + modified scenario, prints comparison
+|-- analysis/                       Advanced-analysis scripts (population, control)
 |   |-- run_patient_cohort.m        Monte Carlo cohort of 100 virtual patients (parsim)
 |   |-- sensitivity_tornado.m       PRCC tornado plot of cohort parameter sensitivity
 |   `-- linearize_baroreflex.m      Closed-loop linearization + Bode (Simulink Control Design)
@@ -187,7 +185,7 @@ Describe the structure of the currently open Simulink model.
 
 Copilot should call `model_overview` and return a description of the `CardiacDigitalTwin` subsystem hierarchy. If it responds without calling MCP tools, see the troubleshooting section in [`setup/mcp-configuration.md`](setup/mcp-configuration.md).
 
-![Copilot Chat responding to the first prompt, showing the Ran Model Overview MCP tool call and the four-subsystem cascade summary](docs/images/demo-copilot-first-prompt.png)
+![Copilot Chat responding to the first prompt, showing the Ran Model Overview MCP tool call and the five-subsystem closed-loop cascade summary](docs/images/demo-copilot-first-prompt.png)
 
 ### Step 5. Run the demo
 
@@ -206,36 +204,27 @@ Before every session, complete all checks in `setup/preflight_checklist.md`.
 
 ## Documentation site
 
-The full implementation reference (model architecture, formulas, validation methodology, requirements artifact, real-time dashboard, and the Copilot prompt narrative) is published as a [MkDocs](https://www.mkdocs.org/) site under [`docs/`](docs/index.md), themed with [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/).
+The full implementation reference (model architecture, formulas, validation methodology, requirements artifact, real-time dashboard, and the Copilot prompt narrative) is published as a [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/) site at:
 
-### Build and preview locally
+**<https://samueltauil.github.io/cardiac-digital-twin/>**
 
-```bash
-# 1. Install build dependencies (one-time)
-pip install -r docs-requirements.txt
-
-# 2. Live-reload preview at http://127.0.0.1:8000
-mkdocs serve
-
-# 3. Produce a static site in ./site/
-mkdocs build
-```
+The site rebuilds and redeploys automatically on every push to `main` that touches `docs/`, `mkdocs.yml`, or `docs-requirements.txt`, via the [`.github/workflows/docs.yml`](.github/workflows/docs.yml) GitHub Actions workflow. The MkDocs source lives under [`docs/`](docs/index.md); the built site is produced by CI and is not committed.
 
 ### Page map
 
 | Page | Content |
 |------|---------|
-| [Home](docs/index.md) | Vision, value, and what Copilot adds on top of the model. |
-| [The Copilot workflow](docs/copilot-workflow.md) | Prompt-by-prompt narrative, the core of the demo. |
-| [Model architecture](docs/architecture.md) | Subsystem topology, block-level internals, build-script rationale. |
-| [Physiology and math](docs/physiology.md) | All four formulas with derivations and clinical references. |
-| [Validation](docs/validation.md) | The Gherkin test, the MATLAB suite, and when to use each. |
-| [Requirements](docs/requirements.md) | EARS-pattern requirements, link set, and the REQ_CDT_003 verification gap. |
-| [Real-time dashboard](docs/dashboard.md) | Pacing, `RuntimeObject` polling, and troubleshooting. |
-| [Advanced physiology (Phase 2)](docs/advanced-physiology.md) | v2 model: Hill receptor binding, closed-loop baroreflex, virtual patient cohort, PRCC sensitivity. |
-| [Reference](docs/reference.md) | Parameters, MCP tools, and file map. |
+| [Home](https://samueltauil.github.io/cardiac-digital-twin/) | Vision, value, and what Copilot adds on top of the model. |
+| [The Copilot workflow](https://samueltauil.github.io/cardiac-digital-twin/copilot-workflow.html) | Prompt-by-prompt narrative, the core of the demo. |
+| [Model architecture](https://samueltauil.github.io/cardiac-digital-twin/architecture.html) | Subsystem topology, block-level internals, build-script rationale. |
+| [Physiology and math](https://samueltauil.github.io/cardiac-digital-twin/physiology.html) | All formulas with derivations and clinical references. |
+| [Validation](https://samueltauil.github.io/cardiac-digital-twin/validation.html) | The Gherkin test, the MATLAB suite, and when to use each. |
+| [Requirements](https://samueltauil.github.io/cardiac-digital-twin/requirements.html) | EARS-pattern requirements, the link set, and `.slreqx` traceability. |
+| [Real-time dashboard](https://samueltauil.github.io/cardiac-digital-twin/dashboard.html) | Pacing, `RuntimeObject` polling, and troubleshooting. |
+| [Advanced physiology](https://samueltauil.github.io/cardiac-digital-twin/advanced-physiology.html) | Plain-language primer on Hill/Emax, the baroreflex, and the virtual patient cohort, plus closed-loop linearization and the PRCC tornado. |
+| [Reference](https://samueltauil.github.io/cardiac-digital-twin/reference.html) | Parameters, MCP tools, and file map. |
 
-The built output (`./site/`) is gitignored. To publish to GitHub Pages, run `mkdocs gh-deploy` from a branch with push access; it publishes to the `gh-pages` branch.
+> Editing the docs locally? Install the toolchain with `pip install -r docs-requirements.txt` and run `mkdocs serve` for a live preview at `http://127.0.0.1:8000`. Publishing is handled by CI — no manual `gh-deploy` step is needed.
 
 ---
 
@@ -251,10 +240,10 @@ The built output (`./site/`) is gitignored. To publish to GitHub Pages, run `mkd
 [Prompt 7] Draft engineering requirements -- generate-requirement-drafts skill (slreq)
 [Prompt 8] Real-time dashboard            -- realtime_dashboard.m (uifigure + pacing)
 
---- Phase 2 deep dive (optional) ---
-[Prompt 9]  Hill/Emax receptor binding    -- model_edit refactor of HeartRateModel
-[Prompt 10] Baroreflex feedback loop      -- model_edit + Simulink Control Design linearize
-[Prompt 11] Virtual patient cohort + PRCC -- parsim Monte Carlo + sensitivity tornado
+--- Optional deep dive ---
+[Prompt 9]  Explain Hill/Emax receptor binding -- model_read of HeartRateModel/HillEquation
+[Prompt 10] Closed-loop linearization          -- Simulink Control Design linearize + Bode
+[Prompt 11] Virtual patient cohort + PRCC      -- parsim Monte Carlo + sensitivity tornado
 ```
 
 ---

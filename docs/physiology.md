@@ -1,11 +1,11 @@
 # Physiology and math
 
 !!! info "Before you read"
-    This page walks through the four formulas that make the cardiac digital
+    This page walks through the formulas that make the cardiac digital
     twin tick, and the clinical reasoning behind each one. The
     [Quick vocabulary](#quick-vocabulary) below covers every domain term used
     on the page. If you are a clinician new to model-based engineering, skim
-    the vocabulary then jump straight to [The four equations](#the-four-equations).
+    the vocabulary then jump straight to [The five equations](#the-five-equations).
     If you are an engineer new to cardiac physiology, the same vocabulary
     explains the medical terms; the maths is then the easy bit.
 
@@ -45,15 +45,20 @@
 | \(D\) | `beta_blocker_dose_mg` | 50 (default) | mg | Daily oral metoprolol dose |
 | \(\tau\) | `pk_time_constant` | 1800 | s | PK first-order time constant |
 | \(\text{HR}_0\) | `baseline_heart_rate` | 75 | bpm | Drug-free resting HR |
-| \(k_\beta\) | `beta_hr_sensitivity` | 0.24 | bpm/mg | Chronotropic gain per mg dose |
+| \(E_{\max}\) | `emax_bpm` | 18 | bpm | Maximum drug-induced HR reduction |
+| \(EC_{50}\) | `ec50_mg` | 35 | mg | Concentration for half-maximal effect |
+| \(n\) | `hill_n` | 1.5 | — | Hill coefficient (binding cooperativity) |
 | \(\text{SV}\) | `stroke_volume_mL` | 70 | mL/beat | Resting stroke volume (constant) |
 | \(\text{SVR}\) | `svr_mmHg_min_per_L` | 18 | mmHg·min/L | Systemic vascular resistance |
+| \(\text{MAP}^*\) | `map_setpoint_mmHg` | 94 | mmHg | Baroreflex MAP set-point |
+| \(k_{\text{baro}}\) | `baroreflex_gain` | 0.30 | bpm/mmHg | Baroreflex feedback gain |
+| \(\tau_{\text{baro}}\) | `baroreflex_tau` | 60 | s | Baroreflex first-order lag |
 
 Workspace parameters live in [`model/cardiac_params.m`](https://github.com/samueltauil/cardiac-digital-twin/blob/main/model/cardiac_params.m) and are loaded by `setup/startup.m`.
 
 ---
 
-## The four equations
+## The five equations
 
 ### 1. Pharmacokinetics: first-order absorption and elimination
 
@@ -77,7 +82,7 @@ C(t) \;=\; D\!\left(1 - e^{-t/\tau}\right)
 
 A few properties matter for the demo.
 
-The DC gain is one: \(\lim_{t \to \infty} C(t) = D\). At steady state the plasma concentration *equals* the dose value. This is what lets the validation test drive `HeartRateModel` directly with `const(50)` and `const(60)` and still represent the full-model 50 mg to 60 mg comparison.
+The DC gain is one: \(\lim_{t \to \infty} C(t) = D\). At steady state the plasma concentration *equals* the dose value. This is what lets the validation test drive `HeartRateModel` directly with `const(50)` and `const(60)` on its concentration input — holding `BaroreflexIn` at `const(0)` to isolate the open-loop drug effect — and still represent the 50 mg to 60 mg forward-path comparison.
 
 The settling time is about 5\(\tau\) (9000 s). The simulation `StopTime` of 3600 s catches roughly 86 % of the asymptote (2 time constants); the full-validation runs extend to 9000 s.
 
@@ -91,41 +96,50 @@ The half-life is \(\tau \ln 2\), about 1247 s or 20.8 minutes. Metoprolol's *cli
     rates separately. Those refinements would not change the *shape* of the
     dose-response surface this demo demonstrates.
 
-### 2. Chronotropic response: linear gain with safety clamp
+### 2. Chronotropic response: Hill/Emax binding with baroreflex and safety clamp
 
 \[
-\boxed{\;\text{HR}(t) \;=\; \mathrm{clamp}\!\bigl(\text{HR}_0 - k_\beta \cdot C(t),\ \ 40,\ 180\bigr)\;}
+\boxed{\;\text{HR}(t) \;=\; \mathrm{clamp}\!\left(\text{HR}_0 - E_{\max}\frac{C(t)^n}{EC_{50}^n + C(t)^n} + \Delta\text{HR}_{\text{baro}}(t),\ \ 40,\ 180\right)\;}
 \]
 
 !!! abstract "What this means in plain language"
-    Heart rate starts at the drug-free resting value (75 bpm) and is reduced
-    by a fixed amount per unit of drug in the blood. The "clamp" guarantees
-    the model never returns a heart rate outside the physiological range of
-    40 to 180 bpm, even if a wildly out-of-range dose is requested.
+    Heart rate starts at the drug-free resting value (75 bpm). The drug pulls
+    it down, but not in a straight line: as the dose climbs, each extra
+    milligram does less, because the beta receptors on the pacemaker cells
+    progressively fill up. The baroreflex term then nudges the rate back up
+    when blood pressure falls. The "clamp" guarantees the model never returns
+    a heart rate outside the physiological range of 40 to 180 bpm.
 
-At steady state this collapses to a simple line:
+The drug term is the standard **Hill/Emax** equation, implemented in the `HillEquation` Fcn block. \(E_{\max} = 18\) bpm is the most the drug can ever lower the rate; \(EC_{50} = 35\) mg is the concentration that delivers half of that; \(n = 1.5\) is the Hill coefficient that sets how sharply the curve turns over. Because the response saturates, the marginal effect of a 50 → 60 mg increase is small — that is the central physiological point the demo makes.
 
-\[
-\text{HR}_{ss} \;=\; \text{HR}_0 - k_\beta \cdot D
-\;=\; 75 - 0.24 \cdot D \quad\text{[bpm]}
-\]
+The open-loop drug effect alone (baroreflex held at zero) is:
 
-Calibration values:
-
-| Dose | Predicted HR | Reference HR (clinical) |
+| Dose | Drug-only HR | Reference HR (clinical) |
 |---:|:---:|:---:|
-| 25 mg | 69.0 bpm | 67 to 70 |
-| 50 mg | 63.0 bpm | 60 to 65 |
-| 100 mg | 51.0 bpm | 50 to 55 |
+| 25 mg | 68.2 bpm | 67 to 70 |
+| 50 mg | 63.6 bpm | 60 to 65 |
+| 100 mg | 60.1 bpm | 55 to 62 |
 
-The 0.24 bpm/mg gain was chosen so the standard 50 mg/day metoprolol succinate dose produces about a 12 bpm reduction, consistent with clinical practice.
-
-The linear model fails outside the therapeutic range, which is why the saturation block is there. It is a defensive guard that does not activate in normal use.
+The \(E_{\max}\), \(EC_{50}\), and \(n\) values were chosen so the standard 50 mg/day dose sits on the steep part of the curve while 100 mg already approaches the ceiling, consistent with the diminishing returns seen clinically.
 
 - Lower bound `40`: physiological floor for resting HR in a non-pacemaker patient.
-- Upper bound `180`: tachycardia ceiling. Would only matter if the dose were negative.
+- Upper bound `180`: tachycardia ceiling. Would only matter under extreme baroreflex correction.
 
-The clamp activates at \(D = (75-40)/0.24 = 145.8\) mg, well beyond the therapeutic range. This sets the *validity domain* of the linear approximation, which the performance requirement (REQ_CDT_002) explicitly bounds to \([0, 145]\) mg.
+At therapeutic doses the clamp never engages: even the closed-loop rate stays well above 60 bpm. The clamp marks the *validity domain* of the model, which the performance requirement (REQ_CDT_002) bounds to \([0, 145]\) mg.
+
+### 2b. Baroreflex feedback: the autonomic loop
+
+\[
+\boxed{\;\tau_{\text{baro}}\,\dot{\Delta\text{HR}}_{\text{baro}} \;=\; k_{\text{baro}}\,(\text{MAP}^* - \text{MAP}) - \Delta\text{HR}_{\text{baro}}\;}
+\]
+
+!!! abstract "What this means in plain language"
+    The body does not let blood pressure drift freely. Pressure sensors in the
+    arteries (baroreceptors) detect when mean arterial pressure falls below its
+    set-point and signal the heart to speed up to compensate. This term adds
+    that reflex back into the heart-rate equation, closing the loop.
+
+When the drug lowers MAP below the set-point \(\text{MAP}^* = 94\) mmHg, the baroreflex adds a positive HR correction \(k_{\text{baro}}(\text{MAP}^* - \text{MAP})\), filtered through a first-order lag \(\tau_{\text{baro}} = 60\) s. This partially restores heart rate and keeps blood pressure from falling unrealistically far. The loop also attenuates the dose-to-HR gain: a [linearization analysis](advanced-physiology.md) shows the open-loop DC gain of −0.152 bpm/mg drops to −0.111 bpm/mg closed-loop, about a 27 % reduction, with the closed loop remaining stable (dominant pole at −0.023 rad/s).
 
 ### 3. Cardiac output: a Fick-like decomposition
 
@@ -172,63 +186,67 @@ which sits inside the normal adult resting range of 70 to 105 mmHg.
 
 ---
 
-## Closed-form steady-state dose response
+## Closed-loop steady-state dose response
 
-Combining all four equations at steady state:
+Heart rate no longer has a one-line closed form: the Hill term is nonlinear and the baroreflex couples HR to MAP, so the steady-state HR is the fixed point of the closed loop. The downstream stages stay linear, so once HR settles, CO and MAP follow directly:
 
 \[
 \begin{aligned}
-\text{HR}_{ss}(D) &= 75 - 0.24\,D \\
-\text{CO}_{ss}(D) &= \frac{(75 - 0.24\,D) \cdot 70}{1000} \\
-\text{MAP}_{ss}(D) &= \frac{(75 - 0.24\,D) \cdot 70 \cdot 18}{1000}
+\text{HR}_{ss}(D) &= \text{HR}_0 - E_{\max}\frac{C^n}{EC_{50}^n + C^n} + k_{\text{baro}}(\text{MAP}^* - \text{MAP}_{ss}) \quad\text{(solved self-consistently, } C = D) \\
+\text{CO}_{ss}(D) &= \frac{\text{HR}_{ss}(D) \cdot 70}{1000} \\
+\text{MAP}_{ss}(D) &= \frac{\text{HR}_{ss}(D) \cdot 70 \cdot 18}{1000}
 \end{aligned}
 \]
 
-Numerically, for the demo's two doses:
+Numerically, for the demo's two doses (full closed-loop model):
 
 | Dose | \(\text{HR}_{ss}\) | \(\text{CO}_{ss}\) | \(\text{MAP}_{ss}\) |
 |---:|:---:|:---:|:---:|
-| 50 mg | 63.0 bpm | 4.41 L/min | 79.4 mmHg |
-| 60 mg | 60.6 bpm | 4.24 L/min | 76.3 mmHg |
+| 50 mg | 67.4 bpm | 4.72 L/min | 84.9 mmHg |
+| 60 mg | 66.6 bpm | 4.66 L/min | 83.9 mmHg |
 
-The proportional change is identical across all three outputs:
+The proportional change is still identical across all three outputs:
 
 \[
 \frac{\Delta\text{HR}}{\text{HR}_{50}}
 \;=\; \frac{\Delta\text{CO}}{\text{CO}_{50}}
 \;=\; \frac{\Delta\text{MAP}}{\text{MAP}_{50}}
-\;=\; -\frac{0.24 \cdot 10}{63.0}
-\;\approx\; -3.81\,\%
+\;\approx\; \frac{-0.85}{67.4}
+\;\approx\; -1.3\,\%
 \]
 
-This is a direct consequence of the linear coupling between stages (`CO = HR × const`, `MAP = CO × const`). Any percent change in HR propagates identically through both downstream stages. It is the kind of property that is instantly visible from the formulas but easy to miss in a simulation table.
+This survives the nonlinearity because the downstream coupling is still linear (`CO = HR × const`, `MAP = CO × const`): whatever percent change the Hill curve and baroreflex produce in HR propagates identically through both downstream stages. The change is small — about a third of what a naive linear gain would predict — precisely because the Hill curve is near saturation and the baroreflex claws back part of the drop.
 
 ---
 
 ## Why the analytics matter
 
-Every result in this demo has a **closed-form prediction** that can be checked against the simulation. A closed-form prediction is a formula you can evaluate with a calculator, with no need to run the model.
+Every result in this demo has a **closed-form or analytically-verified prediction** that can be checked against the simulation. The PK, cardiac-output, and blood-pressure stages are closed-form; the closed-loop HR fixed point is verified by linearization and by the saturating Hill curve.
 
-- The Gherkin test bounds are derived from \(\text{HR}_{ss} = 75 - 0.24 \cdot D\).
-- The expected-output banner in `cardiac_params.m` is generated from the same formula and printed at startup.
+- The Gherkin test bounds are derived from the open-loop Hill response (`BaroreflexIn = const(0)`): 63.4 to 63.9 bpm at 50 mg, 62.3 to 62.8 bpm at 60 mg.
+- The expected-output banner in `cardiac_params.m` prints the closed-loop steady-state targets at startup.
 - The validation suite (`validation/validate_beta_blocker.m`) cross-checks simulation outputs against the analytical expectations.
 
-This is the discipline that makes the model a *reference implementation* rather than a black box. Every output is auditable: any reader can plug numbers into the four formulas and verify the result themselves.
+This is the discipline that makes the model a *reference implementation* rather than a black box. Every output is auditable: the forward path can be checked by hand, and the closed-loop behaviour is pinned down by the linearization in [Advanced physiology](advanced-physiology.md).
 
 ---
 
-## What the demo deliberately leaves out
+## What the model includes and leaves out
 
-Honest scoping matters. The v1 model omits the following, and the [Advanced physiology (Phase 2)](advanced-physiology.md) page covers the first three with concrete v2 implementations:
+Honest scoping matters. The model captures three effects that a naive linear twin would miss, each covered in detail on the [Advanced physiology](advanced-physiology.md) page:
 
-- **Receptor-binding nonlinearity.** \(k_\beta\) is constant in v1. v2 replaces it with a Hill/Emax expression so each extra milligram has less effect as binding saturates.
-- **Baroreflex feedback.** Falling MAP would normally trigger autonomic compensation that nudges HR up. v1 is open-loop; v2 adds a `BaroreflexController` subsystem that closes the loop from MAP back to HR.
-- **Patient variability.** v1 is one nominal patient. v2 ships a Monte Carlo cohort of 100 virtual patients with a PRCC sensitivity tornado.
-- **Diurnal variation.** Real HR and MAP cycle with the circadian rhythm. Neither v1 nor v2 models this.
-- **Autonomic state.** Sympathetic versus parasympathetic balance affects every parameter here. v2's baroreflex captures part of this loop but not the full autonomic dynamics.
-- **Comorbidity.** Kidney function, heart failure, atrial fibrillation, age. Each reshapes the dose-response curve and is out of scope for both versions.
+- **Receptor-binding nonlinearity.** A Hill/Emax expression replaces any constant gain, so each extra milligram has less effect as binding saturates. This is the dominant reason the 50 → 60 mg change is small.
+- **Baroreflex feedback.** Falling MAP triggers autonomic compensation that nudges HR back up. The `BaroreflexController` subsystem closes the loop from MAP back to HR.
+- **Patient variability.** A Monte Carlo cohort of 100 virtual patients with a PRCC sensitivity tornado quantifies how parameter spread reshapes the response.
 
-The Simulink topology is set up so any of these can be added as a subsystem replacement without disturbing the others. That is the point of using a model-based digital twin in the first place, and is exactly the route Phase 2 follows.
+It still leaves the following out, by design:
+
+- **Two-compartment PK.** The PK stage is a single first-order lag. A clinical model would separate absorption, distribution, and elimination, and divide by volume of distribution.
+- **Diurnal variation.** Real HR and MAP cycle with the circadian rhythm. Not modelled.
+- **Full autonomic dynamics.** The baroreflex captures part of the sympathetic/parasympathetic loop, but not the complete autonomic state.
+- **Comorbidity.** Kidney function, heart failure, atrial fibrillation, age. Each reshapes the dose-response curve and is out of scope.
+
+The Simulink topology is set up so any of these can be added as a subsystem replacement without disturbing the others. That is the point of using a model-based digital twin in the first place.
 
 *[HR]: heart rate, measured in beats per minute (bpm)
 *[CO]: cardiac output, the volume of blood the heart pumps per minute (L/min)

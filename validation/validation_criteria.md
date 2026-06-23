@@ -9,15 +9,17 @@ All checks are automated in `validate_beta_blocker.m`.
 
 ## Steady-State Acceptance Criteria
 
+Values come from the closed-loop model with Hill receptor binding and baroreflex feedback. The marginal HR drop at +20% dose is small because the Hill curve saturates near Emax and the baroreflex partially compensates.
+
 | # | Metric | Condition | Pass Threshold | Fail if |
 |---|--------|-----------|---------------|---------|
-| V1 | HR (baseline, 50 mg) | `63 ± 2 bpm` | 61–65 bpm | Outside range |
-| V2 | CO (baseline, 50 mg) | `4.41 ± 0.15 L/min` | 4.26–4.56 | Outside range |
-| V3 | MAP (baseline, 50 mg)| `79.4 ± 3 mmHg` | 76.4–82.4 | Outside range |
+| V1 | HR (baseline, 50 mg) | `67.5 ± 1.5 bpm` | 66.0–69.0 bpm | Outside range |
+| V2 | CO (baseline, 50 mg) | `4.72 ± 0.10 L/min` | 4.62–4.82 | Outside range |
+| V3 | MAP (baseline, 50 mg)| `84.9 ± 2.5 mmHg` | 82.4–87.4 | Outside range |
 | V4 | HR (modified, 60 mg) | Less than baseline | `< HR_baseline` | HR ≥ HR_baseline |
 | V5 | CO (modified, 60 mg) | Less than baseline | `< CO_baseline` | CO ≥ CO_baseline |
 | V6 | MAP (modified, 60 mg)| Less than baseline | `< MAP_baseline` | MAP ≥ MAP_baseline |
-| V7 | HR delta | Dose increase causes ≥ 2 bpm reduction | `ΔHR ≤ −2 bpm` | `|ΔHR| < 2` |
+| V7 | HR delta | Dose increase causes ≥ 0.5 bpm reduction | `ΔHR ≤ −0.5 bpm` | `|ΔHR| < 0.5` |
 | V8 | Safety: minimum HR | HR never falls below 40 bpm | `HR_min > 40` | HR_min ≤ 40 |
 | V9 | Safety: minimum CO | CO never falls below 3.0 L/min | `CO_min > 3.0` | CO_min ≤ 3.0 |
 | V10| Simulation convergence | Model reaches steady state | SS variance < 0.1% | Does not converge |
@@ -48,7 +50,7 @@ that window is less than 0.1% of its mean.
 ## Out-of-Scope for This Demo
 
 - Patient-specific parameter calibration
-- Stochastic/population variability
 - Drug-drug interactions
-- Non-linear dose-response at extremes
 - Time-varying haemodynamics (e.g., posture, exercise)
+
+Population variability is covered by [`analysis/run_patient_cohort.m`](https://github.com/samueltauil/cardiac-digital-twin/blob/main/analysis/run_patient_cohort.m), which sweeps 100 virtual patients and produces a PRCC sensitivity tornado.
